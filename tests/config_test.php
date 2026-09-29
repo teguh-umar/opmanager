@@ -1,0 +1,67 @@
+<?php
+
+require __DIR__ . '/bootstrap.php';
+require OPM_ROOT . '/src/Config.php';
+require OPM_ROOT . '/src/RightDefinition.php';
+
+use GlpiPlugin\Opmanager\Config;
+use GlpiPlugin\Opmanager\RightDefinition;
+
+// --- single source of truth for match modes (integrasipaman v2.6.0 lesson) ---
+check('five match modes, manual included', Config::MATCH_MODES === ['ip_only', 'name_only', 'hybrid', 'hybrid_name', 'manual']);
+check('default match mode is a valid mode', in_array(Config::DEFAULTS['match_mode'], Config::MATCH_MODES, true));
+check('dropdown labels cover exactly MATCH_MODES', array_keys(Config::matchModeLabels()) === Config::MATCH_MODES);
+check('secured keys all have defaults', array_diff(Config::SECURED, array_keys(Config::DEFAULTS)) === []);
+
+$allowed = ['Computer', 'NetworkEquipment', 'Glpi\\CustomAsset\\SecurityAsset'];
+$base = [
+    'opm_url'               => 'https://opm.example.com:8061/',
+    'opm_verify_ssl'        => '1',
+    'match_mode'            => 'hybrid_name',
+    'asset_itemtypes'       => ['Computer', 'Glpi\\CustomAsset\\SecurityAsset', 'Evil'],
+    'stale_warning_minutes' => '30',
+];
+
+// --- api key handling (Review Focus 2) ---
+$r = Config::sanitize($base + ['opm_api_key' => ''], $allowed);
+check('blank api key keeps stored key', !array_key_exists('opm_api_key', $r['values']));
+$r = Config::sanitize($base + ['opm_api_key' => '  abc123  '], $allowed);
+check('new api key is stored trimmed', ($r['values']['opm_api_key'] ?? null) === 'abc123');
+$r = Config::sanitize($base + ['opm_api_key' => 'abc', 'opm_api_key_clear' => '1'], $allowed);
+check('clear checkbox wipes the key', ($r['values']['opm_api_key'] ?? null) === '');
+
+// --- url ---
+$r = Config::sanitize($base, $allowed);
+check('trailing slash trimmed from url', $r['values']['opm_url'] === 'https://opm.example.com:8061');
+check('valid form has no errors', $r['errors'] === [], implode('; ', $r['errors']));
+$r = Config::sanitize(['opm_url' => 'ftp://x'] + $base, $allowed);
+check('non-http url rejected and not stored', !array_key_exists('opm_url', $r['values']) && count($r['errors']) === 1);
+$r = Config::sanitize(['opm_url' => ''] + $base, $allowed);
+check('empty url allowed (not configured yet)', $r['values']['opm_url'] === '');
+
+// --- mode, itemtypes, ssl, stale ---
+$r = Config::sanitize(['match_mode' => 'hybrid_magic'] + $base, $allowed);
+check('unknown mode rejected and not stored', !array_key_exists('match_mode', $r['values']) && count($r['errors']) === 1);
+$r = Config::sanitize(['match_mode' => 'manual'] + $base, $allowed);
+check('manual mode accepted', $r['values']['match_mode'] === 'manual');
+$r = Config::sanitize($base, $allowed);
+check('only offered itemtypes stored', json_decode($r['values']['asset_itemtypes'], true) === ['Computer', 'Glpi\\CustomAsset\\SecurityAsset']);
+$b2 = $base;
+unset($b2['opm_verify_ssl']);
+$r = Config::sanitize($b2, $allowed);
+check('unchecked ssl box stores 0', $r['values']['opm_verify_ssl'] === '0');
+$r = Config::sanitize(['stale_warning_minutes' => '2'] + $base, $allowed);
+check('stale below 5 rejected', !array_key_exists('stale_warning_minutes', $r['values']) && count($r['errors']) === 1);
+
+// --- itemtype filtering never needs the class to exist (hub §5) ---
+check('bad json gives no itemtypes', Config::filterItemtypes('not json', $allowed) === []);
+check('custom asset string kept without class_exists', Config::filterItemtypes('["Glpi\\\\CustomAsset\\\\SecurityAsset","Gone"]', $allowed) === ['Glpi\\CustomAsset\\SecurityAsset']);
+check('Config.php never calls class_exists', !str_contains((string) file_get_contents(OPM_ROOT . '/src/Config.php'), 'class_exists'));
+
+// --- rights ---
+check('two rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring']);
+check('config right is READ|UPDATE', RightDefinition::ALL[RightDefinition::CONFIG] === (READ | UPDATE));
+check('monitoring right is READ only', RightDefinition::ALL[RightDefinition::MONITORING] === READ);
+check('matrix columns match masks', array_keys(RightDefinition::rightsMatrix(RightDefinition::MONITORING)) === [READ]);
+
+done();
