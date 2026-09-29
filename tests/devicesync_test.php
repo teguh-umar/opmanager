@@ -57,7 +57,7 @@ $store = new FakeStore(['b']);
 $stats = DeviceSync::run(new FakeSource($devices), $store, new Matcher(new FakeLookup()), 'hybrid_name', $now);
 check('every device upserted', $store->upserts === ['a', 'b', 'c', 'd']);
 check('manual pin never rematched', !isset($store->matches[2]));
-check('stats add up', $stats === ['fetched' => 4, 'matched' => 1, 'review' => 1, 'unmatched' => 1, 'manual' => 1]);
+check('stats add up', $stats === ['fetched' => 4, 'matched' => 1, 'review' => 1, 'unmatched' => 1, 'manual' => 1, 'skipped' => 0]);
 check('name match stored', ($store->matches[1]['items_id'] ?? null) === 10);
 
 $store = new FakeStore(['b']);
@@ -73,5 +73,16 @@ try {
     check('source failure propagates', true);
 }
 check('source failure writes nothing', $store->upserts === [] && $store->matches === []);
+
+// Final review Important 2: when a configured asset type cannot be loaded, device
+// data is refreshed but existing pairings are KEPT (no setMatch), and the problem
+// stays visible as the sync error instead of being cleared.
+$store = new FakeStore(['b']);
+$stats = DeviceSync::run(new FakeSource($devices), $store, new Matcher(new FakeLookup()), 'hybrid_name', $now, false);
+check('incomplete matching: devices still refreshed', $store->upserts === ['a', 'b', 'c', 'd']);
+check('incomplete matching: no pairing rewritten', $store->matches === []);
+check('incomplete matching: counted as skipped', ($stats['skipped'] ?? null) === 3);
+check('status message names the unloadable type', str_contains(DeviceSync::statusMessage(['Glpi\\CustomAsset\\StorageAsset']), 'Glpi\\CustomAsset\\StorageAsset'));
+check('status message empty when nothing missing', DeviceSync::statusMessage([]) === '');
 
 done();
