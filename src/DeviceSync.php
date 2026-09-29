@@ -12,17 +12,27 @@ use GlpiPlugin\Opmanager\OpManager\DeviceSource;
  */
 final class DeviceSync
 {
-    /** @return array{fetched: int, matched: int, review: int, unmatched: int, manual: int} */
-    public static function run(DeviceSource $source, DeviceStore $store, Matcher $matcher, string $mode, string $now): array
+    /**
+     * @param bool $can_match false when a configured asset type could not be loaded
+     *                        in this process: device data is still refreshed, but no
+     *                        pairing is rewritten, so earlier matches to that type
+     *                        are kept instead of being downgraded to "not found".
+     * @return array{fetched: int, matched: int, review: int, unmatched: int, manual: int, skipped: int}
+     */
+    public static function run(DeviceSource $source, DeviceStore $store, Matcher $matcher, string $mode, string $now, bool $can_match = true): array
     {
         $devices = $source->listDevices();
 
-        $stats = ['fetched' => 0, 'matched' => 0, 'review' => 0, 'unmatched' => 0, 'manual' => 0];
+        $stats = ['fetched' => 0, 'matched' => 0, 'review' => 0, 'unmatched' => 0, 'manual' => 0, 'skipped' => 0];
         foreach ($devices as $device) {
             $stats['fetched']++;
             $saved = $store->upsert($device, $now);
             if ($saved['is_manual']) {
                 $stats['manual']++;
+                continue;
+            }
+            if (!$can_match) {
+                $stats['skipped']++;
                 continue;
             }
             $name   = $device['display_name'] !== '' ? $device['display_name'] : $device['name'];
@@ -31,5 +41,21 @@ final class DeviceSync
             $stats[$result['state']]++;
         }
         return $stats;
+    }
+
+    /**
+     * The sync error to show in Setup; '' when nothing is wrong.
+     *
+     * @param string[] $missing configured asset itemtypes that could not be loaded
+     */
+    public static function statusMessage(array $missing): string
+    {
+        if ($missing === []) {
+            return '';
+        }
+        return sprintf(
+            'asset type(s) %s are configured but cannot be loaded in this process; device data was refreshed but matching was skipped and earlier pairings were kept',
+            implode(', ', $missing)
+        );
     }
 }

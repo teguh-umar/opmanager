@@ -58,6 +58,10 @@ check('bad json gives no itemtypes', Config::filterItemtypes('not json', $allowe
 check('custom asset string kept without class_exists', Config::filterItemtypes('["Glpi\\\\CustomAsset\\\\SecurityAsset","Gone"]', $allowed) === ['Glpi\\CustomAsset\\SecurityAsset']);
 check('Config.php never calls class_exists', !str_contains((string) file_get_contents(OPM_ROOT . '/src/Config.php'), 'class_exists'));
 
+// Final review Important 4: the stale warning must not fire between two normal syncs.
+check('stale default exceeds the device sync interval', (int) Config::DEFAULTS['stale_warning_minutes'] > Config::DEVICE_SYNC_MINUTES);
+check('install registers DeviceSync from the same interval constant', str_contains((string) file_get_contents(OPM_ROOT . '/install/install.php'), 'Config::DEVICE_SYNC_MINUTES'));
+
 // --- rights ---
 check('two rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring']);
 check('config right is READ|UPDATE', RightDefinition::ALL[RightDefinition::CONFIG] === (READ | UPDATE));
