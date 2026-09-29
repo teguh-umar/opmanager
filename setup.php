@@ -48,4 +48,18 @@ function plugin_init_opmanager()
     // GLPI 11's CheckCsrfListener validates + consumes CSRF tokens before a
     // legacy front file runs - never call Session::checkCSRF() ourselves.
     $PLUGIN_HOOKS['csrf_compliant']['opmanager'] = true;
+
+    // Core encrypts these on write (GLPIKey::getConfigs maps them to plugin:opmanager).
+    $PLUGIN_HOOKS['secured_configs']['opmanager'] = \GlpiPlugin\Opmanager\Config::SECURED;
+
+    \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
+
+    // Shared "PGN Suite" tab on Setup > General (hub §5). class_exists(..., false)
+    // skips the autoloader, which would look for a nonexistent plugins/pgnsuite/.
+    if (!class_exists(\GlpiPlugin\Pgnsuite\ConfigTab::class, false)) {
+        require_once __DIR__ . '/lib/pgnsuite/ConfigTab.php';
+    }
+    \GlpiPlugin\Pgnsuite\ConfigTab::register();
+    $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\ConfigTab::HOOK]['opmanager'] =
+        \GlpiPlugin\Opmanager\SuiteConfig::class . '::section';
 }
