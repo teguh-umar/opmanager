@@ -1,0 +1,48 @@
+<?php
+
+/**
+ * OpManager - ManageEngine OpManager <-> GLPI 11 integration (PGN GLPI Suite plugin #7)
+ *
+ * @author  PGN ICT
+ * @license GPL-3.0-or-later
+ */
+
+define('PLUGIN_OPMANAGER_VERSION', '0.1.0');
+define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
+define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
+
+function plugin_version_opmanager()
+{
+    return [
+        'name'         => 'OpManager',
+        'version'      => PLUGIN_OPMANAGER_VERSION,
+        'author'       => 'PGN ICT',
+        'license'      => 'GPL-3.0-or-later',
+        'homepage'     => '',
+        'requirements' => [
+            'glpi' => [
+                'min' => PLUGIN_OPMANAGER_MIN_GLPI,
+                'max' => PLUGIN_OPMANAGER_MAX_GLPI,
+            ],
+        ],
+    ];
+}
+
+function plugin_opmanager_check_prerequisites()
+{
+    return true;
+}
+
+function plugin_opmanager_check_config()
+{
+    return true;
+}
+
+function plugin_init_opmanager()
+{
+    global $PLUGIN_HOOKS;
+
+    // GLPI 11's CheckCsrfListener validates + consumes CSRF tokens before a
+    // legacy front file runs - never call Session::checkCSRF() ourselves.
+    $PLUGIN_HOOKS['csrf_compliant']['opmanager'] = true;
+}
