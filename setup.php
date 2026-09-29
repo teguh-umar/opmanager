@@ -11,6 +11,9 @@ define('PLUGIN_OPMANAGER_VERSION', '0.1.0');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
+include_once(__DIR__ . '/install/install.php');
+include_once(__DIR__ . '/install/uninstall.php');
+
 function plugin_version_opmanager()
 {
     return [
