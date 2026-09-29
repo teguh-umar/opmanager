@@ -1,2 +1,7 @@
 lib/pgnsuite/ConfigTab.php -text
 lib/pgnsuite/AssetTab.php -text
+tests export-ignore
+docs export-ignore
+tools/release_check.py export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore
