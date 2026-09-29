@@ -1,0 +1,20 @@
+<?php
+
+use GlpiPlugin\Opmanager\Config;
+use GlpiPlugin\Opmanager\RightDefinition;
+
+function plugin_opmanager_uninstall()
+{
+    global $DB;
+
+    foreach (['glpi_plugin_opmanager_devices'] as $table) {
+        if ($DB->tableExists($table)) {
+            $DB->doQuery("DROP TABLE `$table`");
+        }
+    }
+
+    ProfileRight::deleteProfileRights(RightDefinition::names());
+    \Config::deleteConfigurationValues(Config::CONTEXT, array_keys(Config::DEFAULTS));
+
+    return true;
+}
