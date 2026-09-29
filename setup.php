@@ -54,6 +54,9 @@ function plugin_init_opmanager()
 
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
+    // Array-of-classes value is mandatory for a NEW sector (hub §4).
+    $PLUGIN_HOOKS['menu_toadd']['opmanager'] = ['opmanager' => [\GlpiPlugin\Opmanager\Menu::class]];
+
     // Shared "PGN Suite" tab on Setup > General (hub §5). class_exists(..., false)
     // skips the autoloader, which would look for a nonexistent plugins/pgnsuite/.
     if (!class_exists(\GlpiPlugin\Pgnsuite\ConfigTab::class, false)) {
