@@ -70,6 +70,12 @@ final class DbAssetLookup implements AssetLookup
         return $hits;
     }
 
+    /**
+     * Every live owner of the IP is counted, whatever its type - an IP a Computer
+     * shares with a Printer is ambiguous even if only Computer is configured
+     * (spec §5). An owner whose class cannot be loaded here is still counted: its
+     * liveness is unknown, and guessing it away could create a false unique match.
+     */
     public function byIp(string $ip): array
     {
         global $DB;
@@ -77,28 +83,51 @@ final class DbAssetLookup implements AssetLookup
         if ($this->itemtypes === []) {
             return [];
         }
-        $hits = [];
+        $owners = [];
         foreach ($DB->request([
             'SELECT' => ['mainitemtype', 'mainitems_id'],
             'FROM'   => 'glpi_ipaddresses',
             'WHERE'  => [
                 'name'         => $ip,
                 'is_deleted'   => 0,
-                'mainitemtype' => $this->itemtypes,
+                'mainitemtype' => ['<>', ''],
                 'mainitems_id' => ['>', 0],
             ],
         ]) as $row) {
             $itemtype = (string) $row['mainitemtype'];
             $item     = getItemForItemtype($itemtype);
-            if (!$item instanceof \CommonDBTM || !$item->getFromDB((int) $row['mainitems_id'])) {
-                continue;
+            if ($item instanceof \CommonDBTM) {
+                if (!$item->getFromDB((int) $row['mainitems_id'])) {
+                    continue;
+                }
+                if (!empty($item->fields['is_deleted']) || !empty($item->fields['is_template'])) {
+                    continue;
+                }
             }
-            if (!empty($item->fields['is_deleted']) || !empty($item->fields['is_template'])) {
-                continue;
-            }
-            $hits[] = ['itemtype' => $itemtype, 'items_id' => (int) $row['mainitems_id']];
+            $owners[] = ['itemtype' => $itemtype, 'items_id' => (int) $row['mainitems_id']];
         }
-        return $hits;
+        return self::ipHits($owners, $this->itemtypes);
+    }
+
+    /**
+     * Pure. Several distinct owners: all of them (the Matcher treats >1 as ambiguous).
+     * Exactly one owner: it, if its type is configured, else nothing.
+     *
+     * @param list<array{itemtype: string, items_id: int}> $owners
+     * @param string[]                                      $configured
+     * @return list<array{itemtype: string, items_id: int}>
+     */
+    public static function ipHits(array $owners, array $configured): array
+    {
+        $distinct = [];
+        foreach ($owners as $owner) {
+            $distinct[$owner['itemtype'] . '#' . $owner['items_id']] = $owner;
+        }
+        $distinct = array_values($distinct);
+        if (count($distinct) !== 1) {
+            return $distinct;
+        }
+        return in_array($distinct[0]['itemtype'], $configured, true) ? $distinct : [];
     }
 
     /** @return array<string, int> */

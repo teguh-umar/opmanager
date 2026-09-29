@@ -71,7 +71,7 @@ function plugin_opmanager_install()
 
     // CLI mode on purpose: GLPI assigns run mode per task, and web mode would
     // make the sync depend on someone browsing GLPI (hub §4).
-    CronTask::register(Cron::class, 'DeviceSync', HOUR_TIMESTAMP, [
+    CronTask::register(Cron::class, 'DeviceSync', Config::DEVICE_SYNC_MINUTES * MINUTE_TIMESTAMP, [
         'mode'    => CronTask::MODE_EXTERNAL,
         'state'   => CronTask::STATE_WAITING,
         'comment' => 'OpManager device sync and asset matching',

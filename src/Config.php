@@ -18,13 +18,19 @@ final class Config
 
     public const BASE_ASSET_ITEMTYPES = ['Computer', 'NetworkEquipment'];
 
+    /**
+     * DeviceSync frequency. The stale warning default must stay above it, or every
+     * Monitoring section warns for part of each cycle (final review, 2026-09-29).
+     */
+    public const DEVICE_SYNC_MINUTES = 60;
+
     public const DEFAULTS = [
         'opm_url'                => '',
         'opm_api_key'            => '',
         'opm_verify_ssl'         => '1',
         'match_mode'             => 'hybrid_name',
         'asset_itemtypes'        => '["Computer","NetworkEquipment"]',
-        'stale_warning_minutes'  => '30',
+        'stale_warning_minutes'  => '90',
         'last_device_sync'       => '',
         'last_device_sync_error' => '',
     ];
