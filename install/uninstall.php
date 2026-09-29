@@ -15,6 +15,7 @@ function plugin_opmanager_uninstall()
 
     ProfileRight::deleteProfileRights(RightDefinition::names());
     \Config::deleteConfigurationValues(Config::CONTEXT, array_keys(Config::DEFAULTS));
+    CronTask::unregister('opmanager');
 
     return true;
 }
