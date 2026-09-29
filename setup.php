@@ -65,4 +65,14 @@ function plugin_init_opmanager()
     \GlpiPlugin\Pgnsuite\ConfigTab::register();
     $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\ConfigTab::HOOK]['opmanager'] =
         \GlpiPlugin\Opmanager\SuiteConfig::class . '::section';
+
+    // Shared "PGN Suite" tab on asset forms (hub §5). The itemtype list is plain
+    // strings read from config + glpi_assets_assetdefinitions: custom asset classes
+    // are not loaded yet here, so NEVER filter it with class_exists().
+    if (!class_exists(\GlpiPlugin\Pgnsuite\AssetTab::class, false)) {
+        require_once __DIR__ . '/lib/pgnsuite/AssetTab.php';
+    }
+    \GlpiPlugin\Pgnsuite\AssetTab::register(\GlpiPlugin\Opmanager\Config::assetItemtypes());
+    $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\AssetTab::HOOK]['opmanager'] =
+        \GlpiPlugin\Opmanager\AssetSections::class . '::sections';
 }
