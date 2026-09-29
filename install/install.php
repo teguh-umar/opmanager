@@ -1,6 +1,7 @@
 <?php
 
 use GlpiPlugin\Opmanager\Config;
+use GlpiPlugin\Opmanager\Cron;
 use GlpiPlugin\Opmanager\RightDefinition;
 use GlpiPlugin\Opmanager\RightSeeder;
 
@@ -67,6 +68,14 @@ function plugin_opmanager_install()
     foreach (RightSeeder::plan($new_rights, $profiles) as $pid => $rights) {
         ProfileRight::updateProfileRights($pid, $rights);
     }
+
+    // CLI mode on purpose: GLPI assigns run mode per task, and web mode would
+    // make the sync depend on someone browsing GLPI (hub §4).
+    CronTask::register(Cron::class, 'DeviceSync', HOUR_TIMESTAMP, [
+        'mode'    => CronTask::MODE_EXTERNAL,
+        'state'   => CronTask::STATE_WAITING,
+        'comment' => 'OpManager device sync and asset matching',
+    ]);
 
     return true;
 }
