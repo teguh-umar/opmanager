@@ -59,6 +59,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D16 | Arah keluar memakai **hook plugin**, bukan webhook bawaan GLPI. Alasan user: awalnya lebih rumit, tapi operasionalnya lebih mudah. Alasan teknis: tiket gabungan (D12) butuh satu clear per alarm, dan Solved oleh OpManager harus dibedakan dari Solved oleh teknisi | 2026-09-29 |
 | D17 | OpManager tidak memanggil API GLPI. API v2 memakai token OAuth 1 jam; API v1 butuh `initSession` lalu Session-Token yang juga kedaluwarsa (`APIRest.php:174` → `checkSessionToken()`). Selain itu, D3/D6/D10/D12 butuh logika "cek dulu, baru tulis" yang tidak bisa dilakukan oleh webhook | 2026-09-29 |
 | D18 | Tiket memakai **template tiket GLPI** (default GLPI atau kustom) yang dipilih di Setup; semua isian mengikuti field GLPI (§7) | 2026-09-29 |
+| D19 | Severity OpManager asli (terverifikasi di produksi 2026-09-30): `numericSeverity` 1 Critical, 2 Trouble, 3 Attention, 4 Service Down, 5 Clear. Menggantikan nama Critical/Major/Minor/Warning di D11 dan §7/§10. Default tiket tetap **Critical saja** (= 1). Field `severity` berisi HTML, tidak boleh dirender; pakai `severityString` | 2026-09-30 |
 
 ## 3. Arsitektur
 
@@ -158,7 +159,7 @@ Semua tabel memiliki `id INT UNSIGNED AUTO_INCREMENT`, `date_creation` dan `date
 | `alarm_key` | VARCHAR(255) **UNIQUE** | Penjamin D3 |
 | `plugin_opmanager_devices_id` | INT UNSIGNED | |
 | `alarm_type` | VARCHAR(255) | Kategori alarm OpManager; kunci "jenis sama" untuk D10 |
-| `severity` | VARCHAR(16) | `critical` / `major` / `minor` / `warning` / `clear` |
+| `severity` | TINYINT UNSIGNED | `numericSeverity` OpManager: 1 Critical, 2 Trouble, 3 Attention, 4 Service Down, 5 Clear (D19) |
 | `message` | TEXT | |
 | `state` | VARCHAR(16) | `active` / `cleared` |
 | `tickets_id` | INT UNSIGNED | 0 = tanpa tiket |
@@ -206,8 +207,8 @@ duplikat. Keputusan dievaluasi berurutan, aturan pertama yang cocok menang:
   manusia; logika tidak pernah membaca judul.
 - Kalau field wajib template kosong, GLPI menolak tiket → `ticket_pending = 1`, dicatat
   di log dan tampil di Setup; alarm tidak hilang.
-- Urgensi dari severity (Critical → Very high, Major → High, Minor → Medium, Warning →
-  Low) dipakai **hanya** kalau template tidak menentukan urgensi.
+- Urgensi dari severity (Critical → Very high, Trouble → High, Attention → Medium,
+  Service Down → High) dipakai **hanya** kalau template tidak menentukan urgensi (D19).
 - Pembuat: user GLPI layanan yang diatur di Setup (webhook dan cron berjalan tanpa login).
 - Aset ditautkan (`Item_Ticket`) kalau `match_state = matched`.
 - **Entity (D14):** entity aset pasangan → entity IP network GLPI paling spesifik yang
@@ -261,7 +262,7 @@ yang punya pasangan perangkat OpManager, hanya untuk pemegang
 | `opm_verify_ssl` *(usulan)* | ya |
 | `webhook_token` (terenkripsi, bisa dibuat ulang) | acak saat instalasi |
 | `match_mode` | `hybrid_name` |
-| `ticket_severities` | `critical` |
+| `ticket_severities` | `1` (Critical, D19) |
 | `ticket_entity_default`, `ticket_use_ipnetwork_entity` | root, ya |
 | `ticket_template` | `0` = default GLPI |
 | `ticket_title_pattern`, `ticket_content_pattern` | pola default di §7 |
@@ -326,3 +327,22 @@ token tidak pernah ditampilkan ulang utuh.
 5. **User layanan GLPI** untuk pembuat tiket dibuat, dengan hak buat tiket di entity
    target.
 6. Nama klaim hak `plugin_opmanager_monitoring` di hub.
+
+## 14. Fakta produksi yang sudah terverifikasi (2026-09-30)
+
+- **Error OpManager selalu HTTP 200** dengan `{"error":{"code","message"}}` (contoh: code
+  5000, apiKey tidak valid). Status HTTP tidak boleh dipercaya; plugin memeriksa objek
+  `error` (v0.1.1).
+- **`/api/json/device/listDevices`** mengembalikan list sesuai asumsi (933 perangkat).
+  Banyak perangkat dinamai IP. §13 butir 1 terjawab untuk perangkat.
+- **`/api/json/alarm/listAlarms`** mengembalikan list datar berisi 6.231 alarm (3,7 MB),
+  termasuk yang sudah Clear. Field per alarm: `alarmId` (kunci alarm), `alarmcode` (jenis
+  alarm untuk D10), `entity`, `deviceName`, `displayName`, `ipAddress`, `category`,
+  `numericSeverity`/`severityString` (D19), `statusStr`/`statusNum`, `eventType`,
+  `message`, `modTime`/`modTimeLong` (epoch ms), `who` (status acknowledge).
+- **`deviceName` pada alarm tidak selalu ada di daftar perangkat** (contoh VM di host VMware:
+  `10.129.3.139.10000000001`, `displayName` VM-MSGIS-DBS, `ipAddress` 10.129.14.139).
+  Tautan alarm ke aset: `deviceName` → `devices.device_key`; kalau tidak ada, pakai
+  `displayName`/`ipAddress` dengan aturan pencocokan §5.
+- **Belum terverifikasi:** parameter filter `listAlarms` (hanya alarm aktif/periode),
+  endpoint notes dan clear, dan variabel payload webhook OpManager.
