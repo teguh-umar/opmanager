@@ -26,6 +26,7 @@ namespace {
     }
     class Computer extends CommonDBTM {}
     class Printer extends CommonDBTM {}
+    class Ticket { public static function getFormURLWithID($id, $full = true) { return '/front/ticket.form.php?id=' . (int) $id; } }
 }
 
 namespace Glpi\CustomAsset {
@@ -37,6 +38,11 @@ namespace GlpiPlugin\Opmanager {
     final class CustomAssets
     {
         public static function active(): array { return ['Glpi\\CustomAsset\\SecurityAsset' => 'Security']; }
+    }
+    final class Alarm
+    {
+        public static function forAsset(string $t, int $id, int $limit): array { return $GLOBALS['ALARMS'] ?? []; }
+        public static function countForAsset(string $t, int $id): int { return count($GLOBALS['ALARMS'] ?? []); }
     }
     final class Device
     {
@@ -86,6 +92,17 @@ namespace {
     $html = AssetSections::html(AssetSections::viewModel($many, $now, 30, '2026-09-29 09:59:00'));
     check('capped at MAX_ROWS rows', substr_count($html, '<tr data-opm-device') === AssetSections::MAX_ROWS);
     check('truncation is visible', str_contains($html, 'Showing 20 of 25'));
+
+    $GLOBALS['DEVICES'] = [];
+    $GLOBALS['ALARMS'] = [['alarm_key' => '10000003244', 'severity_label' => 'Critical', 'message' => '<script>x</script>', 'state' => 'active', 'tickets_id' => 55, 'ticket_pending' => 0, 'last_change' => '2026-09-30 10:00:00']];
+    check('alarms alone show the section', count(AssetSections::sections(new Computer())) === 1);
+    $html = AssetSections::html(AssetSections::viewModel([], $now, 30, '2026-09-30 09:59:00', $GLOBALS['ALARMS'], 1));
+    check('alarm message escaped', str_contains($html, '&lt;script&gt;') && !str_contains($html, '<script>x'));
+    check('alarm links its ticket', str_contains($html, '/front/ticket.form.php?id=55'));
+    $many = array_fill(0, 25, $GLOBALS['ALARMS'][0]);
+    $html = AssetSections::html(AssetSections::viewModel([], $now, 30, '2026-09-30 09:59:00', array_slice($many, 0, 20), 25));
+    check('alarm truncation visible', str_contains($html, 'Showing 20 of 25 alarms'));
+    check('still no pager', !preg_match('/pagination|page-link/', $html));
 
     done();
 }
