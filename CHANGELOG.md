@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+- Alarm polling: CLI cron `AlarmSync` (every 10 min) pulls OpManager's active alarms
+  (`alertType=ActiveAlarms`) into `glpi_plugin_opmanager_alarms`.
+- Tickets from alarms:
+  - one ticket per OpManager alarm id;
+  - alarms of the same device join its open ticket;
+  - the same alarm id back after a clear reopens its ticket;
+  - Solved only when every alarm on the ticket is confirmed Clear by OpManager;
+  - a repeat of the same device + alarm type within 24 h is linked to the earlier ticket;
+  - alarm storm brake (10 new tickets / 5 min → one storm ticket).
+- Ticket content through a GLPI ticket template, and title/description patterns in Setup.
+- Ticket entity: asset entity → GLPI IP network entity → default.
+- API key now sent only in the `apiKey` header.
+- Monitoring section lists the asset's OpManager alarms; new "OpManager alarms" list page.
+
 ## 0.1.1
 
 - OpManager error responses (HTTP 200 with `{"error":{"code","message"}}`, e.g. a rejected
