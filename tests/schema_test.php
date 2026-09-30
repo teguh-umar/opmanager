@@ -28,4 +28,12 @@ foreach ($tables as [, $table, $body]) {
 }
 check('devices.device_key is UNIQUE', (bool) preg_match('/UNIQUE KEY `device_key` \(`device_key`\)/', $src));
 
+foreach (['glpi_plugin_opmanager_alarms', 'glpi_plugin_opmanager_storms'] as $t) {
+    check("install creates {$t}", in_array($t, array_column($tables, 1), true));
+}
+check('alarms.alarm_key is UNIQUE (D3)', (bool) preg_match('/UNIQUE KEY `alarm_key` \(`alarm_key`\)/', $src));
+check('alarms keep entity_key for notes/clear', str_contains($src, '`entity_key` VARCHAR(255)'));
+check('uninstall drops the new tables', str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_alarms')
+    && str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_storms'));
+
 done();
