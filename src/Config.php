@@ -24,6 +24,16 @@ final class Config
      */
     public const DEVICE_SYNC_MINUTES = 60;
 
+    /** AlarmSync frequency (spec §3). */
+    public const ALARM_SYNC_MINUTES = 10;
+
+    /** OpManager numericSeverity values a ticket may be created for (D19); 5 = Clear never is. */
+    public const SEVERITIES = [1 => 'Critical', 2 => 'Trouble', 3 => 'Attention', 4 => 'Service Down'];
+
+    public const DEFAULT_TITLE_PATTERN = '[OPM-{alarm_key}] {severity}: {message} - {device}';
+
+    public const DEFAULT_CONTENT_PATTERN = "OpManager alarm {alarm_key}\nDevice: {device} ({ip})\nSeverity: {severity}\nAlarm type: {alarm_type}\nTime: {time}\n\n{message}";
+
     public const DEFAULTS = [
         'opm_url'                => '',
         'opm_api_key'            => '',
@@ -33,6 +43,18 @@ final class Config
         'stale_warning_minutes'  => '90',
         'last_device_sync'       => '',
         'last_device_sync_error' => '',
+        'ticket_severities'           => '[1]',
+        'ticket_template'             => '0',
+        'ticket_title_pattern'        => self::DEFAULT_TITLE_PATTERN,
+        'ticket_content_pattern'      => self::DEFAULT_CONTENT_PATTERN,
+        'service_user'                => '0',
+        'ticket_entity_default'       => '0',
+        'ticket_use_ipnetwork_entity' => '1',
+        'relink_window_hours'         => '24',
+        'storm_threshold'             => '10',
+        'storm_window_minutes'        => '5',
+        'last_alarm_sync'             => '',
+        'last_alarm_sync_error'       => '',
     ];
 
     public static function get(string $key): string
@@ -124,6 +146,69 @@ final class Config
         }
 
         return ['values' => $values, 'errors' => $errors];
+    }
+
+    /**
+     * Validate the ticketing part of the Setup form. Pure; a key missing from
+     * `values` means "keep what is stored".
+     *
+     * @return array{values: array<string, string>, errors: list<string>}
+     */
+    public static function sanitizeTicketing(array $post): array
+    {
+        $values = [];
+        $errors = [];
+
+        $sev = array_values(array_intersect(
+            array_map('intval', (array) ($post['ticket_severities'] ?? [])),
+            array_keys(self::SEVERITIES)
+        ));
+        sort($sev);
+        $values['ticket_severities'] = (string) json_encode($sev);
+
+        foreach (['ticket_template', 'service_user', 'ticket_entity_default'] as $key) {
+            $values[$key] = (string) max(0, (int) ($post[$key] ?? 0));
+        }
+
+        foreach (['ticket_title_pattern' => 250, 'ticket_content_pattern' => 5000] as $key => $max) {
+            $v = trim((string) ($post[$key] ?? ''));
+            if ($v === '' || strlen($v) > $max) {
+                $errors[] = sprintf(__('%s must be 1 to %d characters', 'opmanager'), $key, $max);
+            } else {
+                $values[$key] = $v;
+            }
+        }
+
+        $values['ticket_use_ipnetwork_entity'] = empty($post['ticket_use_ipnetwork_entity']) ? '0' : '1';
+
+        foreach (['relink_window_hours' => [0, 720], 'storm_threshold' => [0, 1000], 'storm_window_minutes' => [1, 120]] as $key => [$min, $max]) {
+            $n = (int) ($post[$key] ?? -1);
+            if ($n < $min || $n > $max) {
+                $errors[] = sprintf(__('%s must be between %d and %d', 'opmanager'), $key, $min, $max);
+            } else {
+                $values[$key] = (string) $n;
+            }
+        }
+
+        return ['values' => $values, 'errors' => $errors];
+    }
+
+    /** @return array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, service_user: int, template_id: int, title_pattern: string, content_pattern: string, entity_default: int, use_ipnetwork: bool} */
+    public static function ticketingConfig(): array
+    {
+        $sev = json_decode(self::get('ticket_severities'), true);
+        return [
+            'ticket_severities'    => is_array($sev) ? array_values(array_map('intval', $sev)) : [1],
+            'relink_window_hours'  => (int) self::get('relink_window_hours'),
+            'storm_threshold'      => (int) self::get('storm_threshold'),
+            'storm_window_minutes' => max(1, (int) self::get('storm_window_minutes')),
+            'service_user'         => (int) self::get('service_user'),
+            'template_id'          => (int) self::get('ticket_template'),
+            'title_pattern'        => self::get('ticket_title_pattern'),
+            'content_pattern'      => self::get('ticket_content_pattern'),
+            'entity_default'       => (int) self::get('ticket_entity_default'),
+            'use_ipnetwork'        => self::get('ticket_use_ipnetwork_entity') === '1',
+        ];
     }
 
     /**

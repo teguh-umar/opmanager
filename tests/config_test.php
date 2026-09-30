@@ -68,4 +68,30 @@ check('config right is READ|UPDATE', RightDefinition::ALL[RightDefinition::CONFI
 check('monitoring right is READ only', RightDefinition::ALL[RightDefinition::MONITORING] === READ);
 check('matrix columns match masks', array_keys(RightDefinition::rightsMatrix(RightDefinition::MONITORING)) === [READ]);
 
+// --- ticketing (Plan 2) ---
+check('ticketable severities exclude Clear', array_keys(Config::SEVERITIES) === [1, 2, 3, 4]);
+check('default ticket severity is Critical only (D11/D19)', json_decode(Config::DEFAULTS['ticket_severities'], true) === [1]);
+check('alarm sync faster than device sync', Config::ALARM_SYNC_MINUTES < Config::DEVICE_SYNC_MINUTES);
+
+$t = ['ticket_severities' => ['1', '2', '9'], 'ticket_template' => '3', 'ticket_title_pattern' => ' [OPM-{alarm_key}] {message} ',
+      'ticket_content_pattern' => '{message}', 'service_user' => '42', 'ticket_entity_default' => '0',
+      'ticket_use_ipnetwork_entity' => '1', 'relink_window_hours' => '24', 'storm_threshold' => '10', 'storm_window_minutes' => '5'];
+$r = Config::sanitizeTicketing($t);
+check('ticketing form valid', $r['errors'] === [], implode('; ', $r['errors']));
+check('unknown severity dropped', json_decode($r['values']['ticket_severities'], true) === [1, 2]);
+check('title trimmed', $r['values']['ticket_title_pattern'] === '[OPM-{alarm_key}] {message}');
+check('ids stored as ints', $r['values']['service_user'] === '42' && $r['values']['ticket_template'] === '3');
+$r = Config::sanitizeTicketing(['ticket_title_pattern' => '   '] + $t);
+check('empty title rejected', !array_key_exists('ticket_title_pattern', $r['values']) && count($r['errors']) === 1);
+$r = Config::sanitizeTicketing(['storm_window_minutes' => '0'] + $t);
+check('storm window 0 rejected', !array_key_exists('storm_window_minutes', $r['values']) && count($r['errors']) === 1);
+$r = Config::sanitizeTicketing(['storm_threshold' => '0'] + $t);
+check('storm threshold 0 allowed (brake off)', $r['values']['storm_threshold'] === '0');
+$r = Config::sanitizeTicketing(['ticket_severities' => []] + $t);
+check('no severity = no tickets, allowed', $r['values']['ticket_severities'] === '[]');
+$b = $t;
+unset($b['ticket_use_ipnetwork_entity']);
+check('unchecked ipnetwork box stores 0', Config::sanitizeTicketing($b)['values']['ticket_use_ipnetwork_entity'] === '0');
+
 done();
+
