@@ -61,6 +61,23 @@ try {
     check('transport failure message redacted', !str_contains($e->getMessage(), 'S3CRET'));
 }
 
+// Production 2026-09-30: OpManager answers HTTP 200 with an error object when the key
+// is rejected. The message must reach Setup, not a generic "unexpected shape".
+$prod = '{"error":{"code":5000,"message":"Specified apiKey is not valid. Authentication failed."}}';
+try {
+    DeviceParser::parse($prod);
+    check('OpManager error object throws', false);
+} catch (ClientException $e) {
+    check('OpManager error object throws', true);
+    check('OpManager error message surfaced', str_contains($e->getMessage(), 'Specified apiKey is not valid') && str_contains($e->getMessage(), '5000'));
+}
+try {
+    DeviceParser::parse('{"error":"plain text failure"}');
+    check('string error surfaced', false);
+} catch (ClientException $e) {
+    check('string error surfaced', str_contains($e->getMessage(), 'plain text failure'));
+}
+
 check('unconfigured client refuses', $threw(fn () => (new Client('', '', true, $transport))->listDevices()));
 
 done();
