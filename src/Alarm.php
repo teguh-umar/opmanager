@@ -74,4 +74,31 @@ class Alarm extends CommonDBTM
             ['id' => 9, 'table' => $table, 'field' => 'ticket_pending', 'name' => __('Ticket pending', 'opmanager'), 'datatype' => 'bool', 'massiveaction' => false],
         ];
     }
+
+    public function showForm($ID, array $options = [])
+    {
+        if (!$this->getFromDB((int) $ID)) {
+            return false;
+        }
+        $f    = $this->fields;
+        $rows = [
+            __('Alarm ID', 'opmanager')    => htmlescape($f['alarm_key']),
+            __('Device', 'opmanager')      => htmlescape($f['display_name'] ?: $f['device_name']),
+            __('IP address')               => htmlescape($f['ip_address']),
+            __('Severity', 'opmanager')    => htmlescape($f['severity_label']),
+            __('Alarm type', 'opmanager')  => htmlescape($f['alarm_code']),
+            __('Message', 'opmanager')     => htmlescape((string) $f['message']),
+            __('State', 'opmanager')       => htmlescape($f['state']),
+            __('Ticket')                   => $f['tickets_id'] > 0
+                ? '<a href="' . htmlescape(\Ticket::getFormURLWithID((int) $f['tickets_id'])) . '">#' . (int) $f['tickets_id'] . '</a>'
+                : ($f['ticket_pending'] ? __s('pending', 'opmanager') : '-'),
+            __('Last change', 'opmanager') => htmlescape((string) $f['last_change']),
+        ];
+        echo "<div class='card'><div class='card-body'><table class='table table-sm'>";
+        foreach ($rows as $label => $value) {
+            echo '<tr><th class="w-25">' . htmlescape($label) . '</th><td>' . $value . '</td></tr>';
+        }
+        echo '</table></div></div>';
+        return true;
+    }
 }
