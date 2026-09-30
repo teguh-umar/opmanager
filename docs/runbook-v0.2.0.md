@@ -13,6 +13,12 @@ Tick a box only with the evidence named on it. Paste outputs back to the session
 - [ ] Create or choose a GLPI **service user** for alarm tickets (e.g. `svc-opmanager`),
       with a central profile that can create tickets in the target entities.
 - [ ] Decide the ticket template (or keep "Default GLPI template") and the default entity.
+- [ ] In OpManager, **disable the "GLPI_Create_Ticket" (Invoke a Webhook) action** in every
+      Notification Profile that uses it, or one alarm becomes two tickets. Keep the action
+      itself: v0.3.0 points it at the plugin's receiver instead.
+- [ ] Move its fixed values into the chosen GLPI ticket template: category (`1`) and assigned
+      technician (`5`) as predefined fields. Use user `17` as the plugin's service user if it is
+      a dedicated account.
 
 ## 2. Install
 
