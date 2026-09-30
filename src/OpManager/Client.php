@@ -3,15 +3,17 @@
 namespace GlpiPlugin\Opmanager\OpManager;
 
 /**
- * The only place that talks HTTP to OpManager. The API key travels as the
- * `apiKey` query parameter, so every message that could contain a URL is passed
- * through redact() before it leaves this class (Review Focus 3).
+ * The only place that talks HTTP to OpManager. The API key travels ONLY in the
+ * `apiKey` header (query-parameter auth is deprecated since OpManager 12.8.100 and
+ * listAlarms is header-only, spec §14). redact() still scrubs any message that
+ * could embed a URL.
  */
-final class Client implements DeviceSource
+final class Client implements DeviceSource, AlarmSource
 {
     public const DEVICE_LIST_PATH = '/api/json/device/listDevices';
+    public const ALARM_LIST_PATH  = '/api/json/alarm/listAlarms';
 
-    /** @var callable(string, array<string, string>): array{status: int, body: string} */
+    /** @var callable(string, array<string, string>, array<string, string>): array{status: int, body: string} */
     private $transport;
 
     public function __construct(
@@ -28,6 +30,21 @@ final class Client implements DeviceSource
         return DeviceParser::parse($this->get(self::DEVICE_LIST_PATH));
     }
 
+    public function listActiveAlarms(): array
+    {
+        return AlarmParser::parse($this->get(self::ALARM_LIST_PATH, ['alertType' => 'ActiveAlarms']));
+    }
+
+    public function alarmByEntity(string $entity): ?array
+    {
+        foreach (AlarmParser::parse($this->get(self::ALARM_LIST_PATH, ['entity' => $entity])) as $alarm) {
+            if ($alarm['entity_key'] === $entity) {
+                return $alarm;
+            }
+        }
+        return null;
+    }
+
     public static function redact(string $text): string
     {
         return (string) preg_replace('/(apiKey=)[^&\s"\']+/i', '$1***', $text);
@@ -40,7 +57,7 @@ final class Client implements DeviceSource
             throw new ClientException('OpManager URL or API key is not configured');
         }
         try {
-            $response = ($this->transport)(rtrim($this->baseUrl, '/') . $path, ['apiKey' => $this->apiKey] + $query);
+            $response = ($this->transport)(rtrim($this->baseUrl, '/') . $path, $query, ['apiKey' => $this->apiKey]);
         } catch (ClientException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -54,9 +71,10 @@ final class Client implements DeviceSource
 
     /**
      * @param array<string, string> $query
+     * @param array<string, string> $headers
      * @return array{status: int, body: string}
      */
-    private function guzzleTransport(string $url, array $query): array
+    private function guzzleTransport(string $url, array $query, array $headers): array
     {
         $http = new \GuzzleHttp\Client([
             'timeout'         => 30,
@@ -64,7 +82,7 @@ final class Client implements DeviceSource
             'verify'          => $this->verifySsl,
             'http_errors'     => false,
         ]);
-        $response = $http->request('GET', $url, ['query' => $query]);
+        $response = $http->request('GET', $url, ['query' => $query, 'headers' => $headers]);
         return ['status' => $response->getStatusCode(), 'body' => (string) $response->getBody()];
     }
 }
