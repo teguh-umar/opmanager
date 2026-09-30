@@ -60,6 +60,8 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D17 | OpManager tidak memanggil API GLPI. API v2 memakai token OAuth 1 jam; API v1 butuh `initSession` lalu Session-Token yang juga kedaluwarsa (`APIRest.php:174` → `checkSessionToken()`). Selain itu, D3/D6/D10/D12 butuh logika "cek dulu, baru tulis" yang tidak bisa dilakukan oleh webhook | 2026-09-29 |
 | D18 | Tiket memakai **template tiket GLPI** (default GLPI atau kustom) yang dipilih di Setup; semua isian mengikuti field GLPI (§7) | 2026-09-29 |
 | D19 | Severity OpManager asli (terverifikasi di produksi 2026-09-30): `numericSeverity` 1 Critical, 2 Trouble, 3 Attention, 4 Service Down, 5 Clear. Menggantikan nama Critical/Major/Minor/Warning di D11 dan §7/§10. Default tiket tetap **Critical saja** (= 1). Field `severity` berisi HTML, tidak boleh dirender; pakai `severityString` | 2026-09-30 |
+| D21 | Tiket hanya untuk severity yang dicentang (default Critical) **pada aset produksi**. Aset produksi = IP alarm atau salah satu IP aset GLPI pasangannya berada di rentang **IP Addressing** (plugin addressing) yang dicentang di Setup. Tanpa rentang yang dicentang, tidak ada tiket. Middleware webhook lama dimatikan saat plugin aktif | 2026-09-30 |
+| D22 | Followup: perubahan severity langsung; perubahan pesan saja paling banyak satu followup per jam per alarm (final review, tidak dibantah user) | 2026-09-30 |
 
 ## 3. Arsitektur
 

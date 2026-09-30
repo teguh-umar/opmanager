@@ -24,6 +24,7 @@ final class AlarmSync
         private AlarmStore $store,
         private TicketGateway $tickets,
         private AssetResolver $assets,
+        private ProductionCheck $production,
         private array $cfg,
     ) {
     }
@@ -99,13 +100,19 @@ final class AlarmSync
         // install) never starts a storm: it is not part of a burst (final review).
         $fresh = (string) $alarm['mod_time'] === '' || (string) $alarm['mod_time'] >= $window;
 
+        // Tickets only for the configured severities on production assets
+        // (user decision 2026-09-30); everything else is stored and shown only.
+        $asset      = $this->assets->resolve($alarm);
+        $ticketable = in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true)
+            && ($has_ticket || $is_clear || $this->production->isProduction($alarm, $asset));
+
         $decision = Decision::decide([
             'severity'             => (int) $alarm['severity'],
             'message'              => (string) $alarm['message'],
             'is_clear'             => $is_clear,
             'existing'             => $existing,
             'ticket_status'        => $status,
-            'ticketable'           => in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true),
+            'ticketable'           => $ticketable,
             'device_open_ticket'   => $candidate ? $this->openTicketFor($alarm['device_name']) : 0,
             'storm_ticket'         => $candidate ? $this->liveStorm($now) : 0,
             'storm_should_start'   => $candidate && $fresh
@@ -113,7 +120,7 @@ final class AlarmSync
             'message_followup_due' => $this->followupDue($existing, $now),
         ]);
 
-        $id  = $this->store->save($alarm, $this->assets->resolve($alarm), $is_clear ? 'cleared' : 'active', $now);
+        $id  = $this->store->save($alarm, $asset, $is_clear ? 'cleared' : 'active', $now);
         $tid = $decision['tickets_id'];
 
         switch ($decision['action']) {
@@ -168,7 +175,7 @@ final class AlarmSync
                 $stats['storm']++;
                 return;
             case Decision::CREATE:
-                $tid = $this->tickets->create($alarm, $this->assets->resolve($alarm));
+                $tid = $this->tickets->create($alarm, $asset);
                 if ($tid === 0) {
                     $this->store->markPending($id);
                     $stats['pending']++;
