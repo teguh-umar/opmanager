@@ -11,7 +11,10 @@
   - Solved only when every alarm on the ticket is confirmed Clear by OpManager;
   - a repeat of the same device + alarm type within 24 h is linked to the earlier ticket;
   - alarm storm brake (10 new tickets / 5 min → one storm ticket).
-- Ticket content through a GLPI ticket template, and title/description patterns in Setup.
+- Tickets only for the ticketed severities (default Critical) **on production assets**: the alarm IP
+  or an IP of the matched GLPI asset lies in an IP Addressing range selected in Setup.
+- Ticket content through a GLPI ticket template, and title/description patterns in Setup
+  (variables include `{category}`).
 - Ticket entity: asset entity → GLPI IP network entity → default.
 - API key now sent only in the `apiKey` header.
 - Monitoring section lists the asset's OpManager alarms; new "OpManager alarms" list page.

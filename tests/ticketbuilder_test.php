@@ -59,4 +59,6 @@ $in = TicketBuilder::build($alarm, $asset, 7, ['itilcategories_id' => 11], 3, $c
 check('missing mandatory fields reported', TicketBuilder::missingMandatory($in, ['itilcategories_id' => 7, 'locations_id' => 83, '_groups_id_assign' => 8, 'name' => 1]) === ['locations_id', '_groups_id_assign']);
 check('no mandatory fields → nothing missing', TicketBuilder::missingMandatory($in, []) === []);
 
+check('category variable available', TicketBuilder::vars($alarm)['{category}'] === 'Server');
+
 done();

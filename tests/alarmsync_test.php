@@ -2,7 +2,7 @@
 
 require __DIR__ . '/bootstrap.php';
 foreach (['OpManager/ClientException', 'OpManager/AlarmSource', 'Ticketing/AssetResolver', 'Ticketing/AlarmStore',
-          'Ticketing/TicketGateway', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmSync'] as $f) {
+          'Ticketing/TicketGateway', 'Ticketing/ProductionCheck', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmSync'] as $f) {
     require OPM_ROOT . "/src/{$f}.php";
 }
 
@@ -11,6 +11,7 @@ use GlpiPlugin\Opmanager\OpManager\ClientException;
 use GlpiPlugin\Opmanager\Ticketing\AlarmStore;
 use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\AssetResolver;
+use GlpiPlugin\Opmanager\Ticketing\ProductionCheck;
 use GlpiPlugin\Opmanager\Ticketing\TicketGateway;
 
 final class Src implements AlarmSource
@@ -67,6 +68,10 @@ final class Gw implements TicketGateway
     public function link(int $n, int $o): void { $this->log[] = "link {$n}->{$o}"; }
     public function closedSince(int $t, string $since): bool { return in_array($t, $this->closedSince, true); }
 }
+final class Prod implements ProductionCheck
+{
+    public function isProduction(array $alarm, array $asset): bool { return !str_starts_with((string) $alarm['device_name'], 'np'); }
+}
 final class Assets implements AssetResolver
 {
     public function resolve(array $a): array { return ['devices_id' => 0, 'itemtype' => 'Computer', 'items_id' => 1]; }
@@ -81,7 +86,7 @@ $cfg = ['ticket_severities' => [1], 'relink_window_hours' => 24, 'storm_threshol
 $now = '2026-09-30 10:00:00';
 $mk = static function (array $active) use ($cfg) {
     $s = new Src($active); $st = new Store(); $g = new Gw();
-    return [new AlarmSync($s, $st, $g, new Assets(), $cfg), $s, $st, $g];
+    return [new AlarmSync($s, $st, $g, new Assets(), new Prod(), $cfg), $s, $st, $g];
 };
 
 // create, then a second identical poll is a no-op
@@ -217,5 +222,11 @@ $sync->run($now);
 $src->active = [$al('m1', 1, 'swm', 'CPU 95 %')];
 $sync->run('2026-09-30 10:10:00');
 check('message-only changes throttled', $gw->log === ['followup 100']);
+
+// Production-only tickets: a Critical alarm outside the production ranges is stored, not ticketed.
+[$sync, $src, $store, $gw] = $mk([$al('p1', 1, 'np-lab-server'), $al('p2', 1, 'prod-db')]);
+$stats = $sync->run($now);
+check('non-production critical alarm is stored only', $store->find('p1')['tickets_id'] === 0 && $stats['stored'] === 1);
+check('production critical alarm gets a ticket', $store->find('p2')['tickets_id'] === 100);
 
 done();

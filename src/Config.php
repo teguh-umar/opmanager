@@ -53,6 +53,7 @@ final class Config
         'relink_window_hours'         => '24',
         'storm_threshold'             => '10',
         'storm_window_minutes'        => '5',
+        'production_addressings'      => '[]',
         'last_alarm_sync'             => '',
         'last_alarm_sync_error'       => '',
     ];
@@ -181,6 +182,9 @@ final class Config
 
         $values['ticket_use_ipnetwork_entity'] = empty($post['ticket_use_ipnetwork_entity']) ? '0' : '1';
 
+        $ranges = array_values(array_filter(array_map('intval', (array) ($post['production_addressings'] ?? [])), static fn (int $id) => $id > 0));
+        $values['production_addressings'] = (string) json_encode($ranges);
+
         foreach (['relink_window_hours' => [0, 720], 'storm_threshold' => [0, 1000], 'storm_window_minutes' => [1, 120]] as $key => [$min, $max]) {
             $n = (int) ($post[$key] ?? -1);
             if ($n < $min || $n > $max) {
@@ -219,6 +223,7 @@ final class Config
             'content_pattern'      => self::get('ticket_content_pattern'),
             'entity_default'       => (int) self::get('ticket_entity_default'),
             'use_ipnetwork'        => self::get('ticket_use_ipnetwork_entity') === '1',
+            'production_addressings' => array_values(array_map('intval', (array) (json_decode(self::get('production_addressings'), true) ?: []))),
         ];
     }
 

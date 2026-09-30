@@ -95,5 +95,10 @@ check('unchecked ipnetwork box stores 0', Config::sanitizeTicketing($b)['values'
 
 check('storm idle window never shorter than one poll', Config::stormIdleMinutes(5) === Config::ALARM_SYNC_MINUTES + 1 && Config::stormIdleMinutes(30) === 30);
 
+// Production-only tickets (user decision 2026-09-30)
+check('no production range selected by default', Config::DEFAULTS['production_addressings'] === '[]');
+$r = Config::sanitizeTicketing(['production_addressings' => ['3', '7', 'x', '-2']] + $t);
+check('production ranges stored as positive ids', json_decode($r['values']['production_addressings'], true) === [3, 7]);
+
 done();
 

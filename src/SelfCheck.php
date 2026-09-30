@@ -50,6 +50,10 @@ final class SelfCheck
                 $user = new \User();
                 self::assert($uid > 0 && $user->getFromDB($uid) && !empty($user->fields['is_active']), 'Setup > OpManager: choose an active GLPI service user for alarm tickets');
             },
+            'tickets/production-ranges' => static function (): void {
+                $ids = Config::ticketingConfig()['production_addressings'];
+                self::assert(\GlpiPlugin\Opmanager\Ticketing\AddressingRanges::load($ids) !== [], 'Setup > OpManager: select at least one valid production IP range, otherwise no ticket is created');
+            },
             'tickets/template-resolves' => static function (): void {
                 $cfg = Config::ticketingConfig();
                 if ($cfg['template_id'] > 0) {
