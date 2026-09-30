@@ -24,7 +24,8 @@ final class AssetSections
         if (!in_array($item::class, Config::assetItemtypes(), true)) {
             return [];
         }
-        if (Device::findForAsset($item::class, (int) $item->getID()) === []) {
+        $id = (int) $item->getID();
+        if (Device::findForAsset($item::class, $id) === [] && Alarm::countForAsset($item::class, $id) === 0) {
             return [];
         }
         return [[
@@ -44,11 +45,14 @@ final class AssetSections
         }
         unset($device);
 
+        $id = (int) $item->getID();
         echo self::html(self::viewModel(
             $devices,
             (int) strtotime((string) \Session::getCurrentTime()),
             (int) Config::get('stale_warning_minutes'),
-            Config::get('last_device_sync')
+            Config::get('last_device_sync'),
+            Alarm::forAsset($item::class, $id, self::MAX_ROWS),
+            Alarm::countForAsset($item::class, $id)
         ));
     }
 
@@ -58,7 +62,7 @@ final class AssetSections
      * @param list<array<string, mixed>> $devices
      * @return array{stale: bool, last_sync: string, stale_minutes: int, total: int, rows: list<array<string, mixed>>}
      */
-    public static function viewModel(array $devices, int $now, int $stale_minutes, string $last_sync): array
+    public static function viewModel(array $devices, int $now, int $stale_minutes, string $last_sync, array $alarms = [], int $alarms_total = 0): array
     {
         $synced = $last_sync === '' ? false : strtotime($last_sync);
         return [
@@ -67,6 +71,8 @@ final class AssetSections
             'stale_minutes' => $stale_minutes,
             'total'         => count($devices),
             'rows'          => array_slice($devices, 0, self::MAX_ROWS),
+            'alarms'        => array_slice($alarms, 0, self::MAX_ROWS),
+            'alarms_total'  => max($alarms_total, count($alarms)),
         ];
     }
 
@@ -106,6 +112,35 @@ final class AssetSections
 
         if ($model['total'] > count($model['rows'])) {
             $out .= '<div class="text-muted">' . htmlescape(sprintf(__('Showing %d of %d', 'opmanager'), count($model['rows']), $model['total'])) . '</div>';
+        }
+
+        $alarms = $model['alarms'] ?? [];
+        if ($alarms !== []) {
+            $out .= '<h4 class="mt-3">' . __s('OpManager alarms', 'opmanager') . '</h4>'
+                . '<table class="table table-sm table-hover mb-2"><thead><tr>'
+                . '<th>' . __s('Severity', 'opmanager') . '</th>'
+                . '<th>' . __s('Message', 'opmanager') . '</th>'
+                . '<th>' . __s('State', 'opmanager') . '</th>'
+                . '<th>' . __s('Ticket') . '</th>'
+                . '<th>' . __s('Last change', 'opmanager') . '</th>'
+                . '</tr></thead><tbody>';
+            foreach ($alarms as $a) {
+                $tid    = (int) ($a['tickets_id'] ?? 0);
+                $ticket = $tid > 0
+                    ? '<a href="' . htmlescape(\Ticket::getFormURLWithID($tid)) . '">#' . $tid . '</a>'
+                    : (!empty($a['ticket_pending']) ? __s('pending', 'opmanager') : '-');
+                $out .= '<tr data-opm-alarm="' . htmlescape((string) ($a['alarm_key'] ?? '')) . '">'
+                    . '<td>' . htmlescape((string) ($a['severity_label'] ?? '')) . '</td>'
+                    . '<td>' . htmlescape((string) ($a['message'] ?? '')) . '</td>'
+                    . '<td>' . htmlescape((string) ($a['state'] ?? '')) . '</td>'
+                    . '<td>' . $ticket . '</td>'
+                    . '<td>' . htmlescape((string) ($a['last_change'] ?? '')) . '</td>'
+                    . '</tr>';
+            }
+            $out .= '</tbody></table>';
+            if ($model['alarms_total'] > count($alarms)) {
+                $out .= '<div class="text-muted">' . htmlescape(sprintf(__('Showing %d of %d alarms', 'opmanager'), count($alarms), $model['alarms_total'])) . '</div>';
+            }
         }
 
         return $out . '</div>';
