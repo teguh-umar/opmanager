@@ -40,6 +40,59 @@ function plugin_opmanager_install()
         ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
     }
 
+    $table = 'glpi_plugin_opmanager_alarms';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `alarm_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `entity_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `device_name` VARCHAR(255) NOT NULL DEFAULT '',
+            `display_name` VARCHAR(255) NOT NULL DEFAULT '',
+            `ip_address` VARCHAR(45) NOT NULL DEFAULT '',
+            `category` VARCHAR(255) NOT NULL DEFAULT '',
+            `alarm_code` VARCHAR(255) NOT NULL DEFAULT '',
+            `event_type` VARCHAR(255) NOT NULL DEFAULT '',
+            `severity` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+            `severity_label` VARCHAR(32) NOT NULL DEFAULT '',
+            `message` TEXT NULL,
+            `state` VARCHAR(16) NOT NULL DEFAULT 'active',
+            `plugin_opmanager_devices_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `itemtype` VARCHAR(255) NOT NULL DEFAULT '',
+            `items_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `tickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `ticket_role` VARCHAR(16) NOT NULL DEFAULT '',
+            `ticket_pending` TINYINT NOT NULL DEFAULT 0,
+            `ticket_created_at` TIMESTAMP NULL DEFAULT NULL,
+            `mod_time` TIMESTAMP NULL DEFAULT NULL,
+            `first_seen` TIMESTAMP NULL DEFAULT NULL,
+            `last_change` TIMESTAMP NULL DEFAULT NULL,
+            `cleared_at` TIMESTAMP NULL DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `alarm_key` (`alarm_key`),
+            KEY `state` (`state`),
+            KEY `device_name` (`device_name`),
+            KEY `tickets_id` (`tickets_id`),
+            KEY `item` (`itemtype`, `items_id`),
+            KEY `plugin_opmanager_devices_id` (`plugin_opmanager_devices_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
+    $table = 'glpi_plugin_opmanager_storms';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `tickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `alarm_count` INT UNSIGNED NOT NULL DEFAULT 0,
+            `started_at` TIMESTAMP NULL DEFAULT NULL,
+            `last_hit_at` TIMESTAMP NULL DEFAULT NULL,
+            `ended_at` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `tickets_id` (`tickets_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
     Config::setDefaults();
 
     $new_rights = array_values(array_diff(
