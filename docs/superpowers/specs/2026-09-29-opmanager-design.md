@@ -344,5 +344,18 @@ token tidak pernah ditampilkan ulang utuh.
   `10.20.3.139.10000000001`, `displayName` VM-APP-DB01, `ipAddress` 10.20.14.139).
   Tautan alarm ke aset: `deviceName` → `devices.device_key`; kalau tidak ada, pakai
   `displayName`/`ipAddress` dengan aturan pencocokan §5.
-- **Belum terverifikasi:** parameter filter `listAlarms` (hanya alarm aktif/periode),
-  endpoint notes dan clear, dan variabel payload webhook OpManager.
+- **Dokumentasi resmi OpManager** (manageengine.com, 2026-09-30):
+  - **API key dikirim lewat header `apiKey`.** Parameter URL sudah deprecated sejak
+    12.8.100, dan `listAlarms` termasuk endpoint yang wajib memakai header. Mulai v0.2.0
+    semua panggilan memakai header, sehingga key juga tidak muncul di URL atau log.
+  - `GET /api/json/alarm/listAlarms`: `deviceName`, `severity` (1-5), `category`,
+    `entity`, `alertType` (`ActiveAlarms` = hanya yang belum clear), `fromTime`/`toTime`
+    (`yyyy-mm-dd hh:mm:ss`).
+  - `/api/json/alarm/addNotes` (`entity`, `notes`) dan `/api/json/alarm/clearAlarm`
+    (`entity`): alarm dikenali lewat **`entity`**, bukan `alarmId`. Tabel `alarms` wajib
+    menyimpan `entity_key` di samping `alarm_key`.
+- **Hipotesis yang harus diuji:** `entity` tetap sama walaupun alarm baru muncul dengan
+  `alarmId` baru setelah clear manual (D9). Kalau terbukti, tautan tiket berulang (D10)
+  memakai `entity` sebagai "perangkat + jenis alarm yang sama".
+- **Belum terverifikasi:** hasil `alertType=ActiveAlarms` lewat header, method HTTP
+  addNotes/clearAlarm (GET atau POST), dan variabel payload webhook OpManager.
