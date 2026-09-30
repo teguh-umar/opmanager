@@ -129,6 +129,11 @@ function plugin_opmanager_install()
         'state'   => CronTask::STATE_WAITING,
         'comment' => 'OpManager device sync and asset matching',
     ]);
+    CronTask::register(Cron::class, 'AlarmSync', Config::ALARM_SYNC_MINUTES * MINUTE_TIMESTAMP, [
+        'mode'    => CronTask::MODE_EXTERNAL,
+        'state'   => CronTask::STATE_WAITING,
+        'comment' => 'OpManager alarm sync and tickets',
+    ]);
 
     return true;
 }

@@ -6,6 +6,11 @@ use GlpiPlugin\Opmanager\Matching\DbAssetLookup;
 use GlpiPlugin\Opmanager\Matching\Matcher;
 use GlpiPlugin\Opmanager\OpManager\Client;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
+use GlpiPlugin\Opmanager\Ticketing\AlarmAssetResolver;
+use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
+use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
+use GlpiPlugin\Opmanager\Ticketing\DbDeviceIndex;
+use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
 
 final class Cron extends \CommonGLPI
 {
@@ -18,6 +23,7 @@ final class Cron extends \CommonGLPI
     {
         return match ($name) {
             'DeviceSync' => ['description' => __('Sync OpManager devices and match them to GLPI assets', 'opmanager')],
+            'AlarmSync'  => ['description' => __('Pull active OpManager alarms and create/update tickets', 'opmanager')],
             default      => [],
         };
     }
@@ -58,6 +64,43 @@ final class Cron extends \CommonGLPI
             $stats['manual'],
             $stats['skipped']
         ));
+        return 1;
+    }
+
+    public static function cronAlarmSync(\CronTask $task): int
+    {
+        $now = (string) \Session::getCurrentTime();
+        $cfg = Config::ticketingConfig();
+
+        if ($cfg['service_user'] <= 0) {
+            $msg = 'no service user configured in Setup; alarm tickets would have no author';
+            Config::set(['last_alarm_sync_error' => $msg]);
+            $task->log($msg);
+            return 0;
+        }
+
+        try {
+            $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1');
+            $sync   = new AlarmSync(
+                $client,
+                new DbAlarmStore(),
+                new GlpiTicketGateway($cfg),
+                new AlarmAssetResolver(new DbDeviceIndex(), new Matcher(new DbAssetLookup(Config::assetItemtypes())), Config::get('match_mode')),
+                $cfg
+            );
+            $stats = $sync->run($now);
+        } catch (ClientException $e) {
+            Config::set(['last_alarm_sync_error' => $e->getMessage()]);
+            \Toolbox::logInFile('opmanager', 'AlarmSync: ' . $e->getMessage() . "\n");
+            $task->log($e->getMessage());
+            return 0;
+        }
+
+        Config::set(['last_alarm_sync' => $now, 'last_alarm_sync_error' => $stats['pending'] > 0
+            ? sprintf('%d alarm ticket(s) could not be created (check template mandatory fields); retried next run', $stats['pending'])
+            : '']);
+        $task->addVolume($stats['fetched']);
+        $task->log(implode(', ', array_map(fn ($k, $v) => "{$k} {$v}", array_keys($stats), $stats)));
         return 1;
     }
 }
