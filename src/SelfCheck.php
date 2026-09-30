@@ -36,6 +36,29 @@ final class SelfCheck
                 self::assert($task->getFromDBbyName(Cron::class, 'DeviceSync'), 'DeviceSync cron not registered');
                 self::assert((int) $task->fields['mode'] === \CronTask::MODE_EXTERNAL, 'DeviceSync is not in CLI mode');
             },
+            'schema/alarm-tables' => static function (): void {
+                global $DB;
+                self::assert($DB->tableExists('glpi_plugin_opmanager_alarms') && $DB->tableExists('glpi_plugin_opmanager_storms'), 'alarm/storm tables missing');
+            },
+            'cron/alarm-sync-cli' => static function (): void {
+                $task = new \CronTask();
+                self::assert($task->getFromDBbyName(Cron::class, 'AlarmSync'), 'AlarmSync cron not registered');
+                self::assert((int) $task->fields['mode'] === \CronTask::MODE_EXTERNAL, 'AlarmSync is not in CLI mode');
+            },
+            'tickets/service-user' => static function (): void {
+                $uid  = (int) Config::get('service_user');
+                $user = new \User();
+                self::assert($uid > 0 && $user->getFromDB($uid) && !empty($user->fields['is_active']), 'Setup > OpManager: choose an active GLPI service user for alarm tickets');
+            },
+            'tickets/template-resolves' => static function (): void {
+                $cfg = Config::ticketingConfig();
+                if ($cfg['template_id'] > 0) {
+                    self::assert((new \TicketTemplate())->getFromDBWithData($cfg['template_id']), "ticket template {$cfg['template_id']} not found");
+                } else {
+                    $tt = (new \Ticket())->getITILTemplateToUse(0, \Ticket::INCIDENT_TYPE, 0, $cfg['entity_default']);
+                    self::assert($tt instanceof \TicketTemplate, 'no default ticket template resolved');
+                }
+            },
             'config/api-key-secured' => static function (): void {
                 self::assert((new \GLPIKey())->isConfigSecured(Config::CONTEXT, 'opm_api_key'), 'opm_api_key is not a secured config');
                 $raw = Config::get('opm_api_key');
