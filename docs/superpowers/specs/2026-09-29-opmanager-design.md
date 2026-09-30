@@ -354,8 +354,17 @@ token tidak pernah ditampilkan ulang utuh.
   - `/api/json/alarm/addNotes` (`entity`, `notes`) dan `/api/json/alarm/clearAlarm`
     (`entity`): alarm dikenali lewat **`entity`**, bukan `alarmId`. Tabel `alarms` wajib
     menyimpan `entity_key` di samping `alarm_key`.
-- **Hipotesis yang harus diuji:** `entity` tetap sama walaupun alarm baru muncul dengan
-  `alarmId` baru setelah clear manual (D9). Kalau terbukti, tautan tiket berulang (D10)
-  memakai `entity` sebagai "perangkat + jenis alarm yang sama".
-- **Belum terverifikasi:** hasil `alertType=ActiveAlarms` lewat header, method HTTP
-  addNotes/clearAlarm (GET atau POST), dan variabel payload webhook OpManager.
+- **Terverifikasi di produksi (probe read-only, key lewat header):**
+  `alertType=ActiveAlarms` mengembalikan 40 alarm aktif (15 Critical, 6 Trouble,
+  19 Attention; 24 KB, bukan 3,7 MB). Tanpa filter: 6.231 alarm.
+- **`entity` 1:1 dengan alarm** (6.231 alarm = 6.231 entity), jadi hipotesis "entity tetap
+  sama untuk alarm baru" **tidak terbukti**. D10 tetap memakai **perangkat + `alarmcode`**
+  sebagai "jenis alarm yang sama"; `entity_key` disimpan hanya untuk notes/clear (Plan 3).
+- **D20 (desain, dilaporkan ke user 2026-09-30) — deteksi clear saat polling:** polling
+  memakai `ActiveAlarms`. Alarm lokal yang masih `active` tapi tidak ada di daftar dicek
+  ulang satu per satu lewat `listAlarms?entity=<entity_key>`, dan hanya ditandai `cleared`
+  kalau jawabannya benar-benar severity 5 (Clear). Respons error atau bukan-list
+  **tidak pernah** meng-clear apa pun. Ini mencegah satu respons kosong men-Solve
+  puluhan tiket sekaligus.
+- **Belum terverifikasi:** method HTTP addNotes/clearAlarm (GET atau POST), dan variabel
+  payload webhook OpManager.
