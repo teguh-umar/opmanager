@@ -366,5 +366,17 @@ token tidak pernah ditampilkan ulang utuh.
   kalau jawabannya benar-benar severity 5 (Clear). Respons error atau bukan-list
   **tidak pernah** meng-clear apa pun. Ini mencegah satu respons kosong men-Solve
   puluhan tiket sekaligus.
-- **Belum terverifikasi:** method HTTP addNotes/clearAlarm (GET atau POST), dan variabel
-  payload webhook OpManager.
+- **Webhook OpManager (terlihat di produksi 2026-09-30, action "GLPI_Create_Ticket"):**
+  Notification Profile → "Invoke a Webhook" bisa melakukan POST dengan body JSON mentah dan
+  header kustom. Variabel yang tersedia: `$alarmid`, `$entity`, `$displayName`, `$deviceIP`,
+  `$strEMSAlarmSeverity`, `$message`, `$alarmTime`, `$category`. Ini menjawab §13 butir 2
+  untuk v0.3.0: `$alarmid` untuk anti-duplikat, `$entity` untuk notes/clear, dan token
+  rahasia plugin lewat header.
+- **Action itu memanggil API v1 GLPI langsung** (`apirest.php` + header `App-Token` /
+  `User-Token`) dan tidak bisa berfungsi. API v1 hanya membaca user token dari
+  `Authorization: user_token …`, dan hanya untuk `initSession`. Endpoint lain wajib memakai
+  `Session-Token` (`APIRest.php:600-620`, `API.php:2393`). Selain itu URL-nya tanpa
+  `/Ticket`, dan `users_id_assign` bukan field tiket (seharusnya `_users_id_assign`).
+  Action ini harus **dinonaktifkan saat v0.2.0 aktif**, supaya satu alarm tidak menjadi dua
+  tiket. Pada v0.3.0 action ini diarahkan ulang ke penerima webhook plugin.
+- **Belum terverifikasi:** method HTTP addNotes/clearAlarm (GET atau POST).
