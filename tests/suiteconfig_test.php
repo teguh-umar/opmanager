@@ -39,6 +39,9 @@ namespace {
             echo '</select>';
         }
     }
+    class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
+    class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
+    class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
 }
@@ -83,6 +86,10 @@ namespace {
     check('editor sees save button', str_contains($html, "name='update'"));
     check('standalone page has no suite marker', !str_contains($html, '_from_pgnsuite'));
     check('dropdown offers every match mode', substr_count($html, '<option value=') >= 5);
+
+    foreach (['ticket_severities[]', 'ticket_template', 'service_user', 'ticket_entity_default', 'ticket_title_pattern', 'ticket_content_pattern', 'relink_window_hours', 'storm_threshold', 'storm_window_minutes'] as $field) {
+        check("ticketing field {$field} rendered", str_contains($html, "name='{$field}'") || str_contains($html, 'name="' . $field . '"'));
+    }
 
     done();
 }

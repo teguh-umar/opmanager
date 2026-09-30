@@ -12,7 +12,12 @@ Session::checkRight(RightDefinition::CONFIG, READ);
 if (isset($_POST['update'])) {
     Session::checkRight(RightDefinition::CONFIG, UPDATE);
 
-    $result = Config::sanitize($_POST, array_keys(Config::offeredItemtypes()));
+    $result  = Config::sanitize($_POST, array_keys(Config::offeredItemtypes()));
+    $tickets = Config::sanitizeTicketing($_POST);
+    $result  = [
+        'values' => $result['values'] + $tickets['values'],
+        'errors' => array_merge($result['errors'], $tickets['errors']),
+    ];
     Config::set($result['values']);
     foreach ($result['errors'] as $error) {
         Session::addMessageAfterRedirect(htmlescape($error), false, ERROR);
