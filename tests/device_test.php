@@ -20,4 +20,12 @@ check('pin requires the config UPDATE right', (bool) preg_match('/isset\(\$_POST
 check('unpin requires the config UPDATE right', (bool) preg_match('/isset\(\$_POST\[.unpin.\]\).*?checkRight\(RightDefinition::CONFIG, UPDATE\)/s', $form));
 check('detail uses displayFullPageForItem', str_contains($form, 'Device::displayFullPageForItem('));
 
+$cron = (string) @file_get_contents(OPM_ROOT . '/src/Cron.php');
+check('AlarmSync cron exists', str_contains($cron, 'public static function cronAlarmSync(\CronTask $task): int'));
+check('AlarmSync keeps the error visible', str_contains($cron, "'last_alarm_sync_error'"));
+$install = (string) file_get_contents(OPM_ROOT . '/install/install.php');
+check('AlarmSync registered in CLI mode from the interval constant', str_contains($install, "'AlarmSync', Config::ALARM_SYNC_MINUTES * MINUTE_TIMESTAMP"));
+check('menu has an alarm entry', str_contains((string) file_get_contents(OPM_ROOT . '/src/Menu.php'), "'alarm'"));
+check('alarm list page exists', is_file(OPM_ROOT . '/front/alarm.php'));
+
 done();

@@ -41,6 +41,12 @@ class Menu extends \CommonGLPI
                 'icon'  => Device::getIcon(),
                 'links' => ['search' => Device::getSearchURL(false)],
             ],
+            'alarm'            => [
+                'title' => Alarm::getTypeName(2),
+                'page'  => Alarm::getSearchURL(false),
+                'icon'  => Alarm::getIcon(),
+                'links' => ['search' => Alarm::getSearchURL(false)],
+            ],
         ];
     }
 }
