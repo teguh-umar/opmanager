@@ -91,6 +91,54 @@ final class SuiteConfig
         echo self::textRow('stale_warning_minutes' . $sfx, 'stale_warning_minutes', __('Warn when device data is older than (minutes)', 'opmanager'), Config::get('stale_warning_minutes'), 'number', $disabled);
         echo '</fieldset>';
 
+        echo '<fieldset class="mb-3"><legend class="fs-4">' . __s('Tickets from alarms', 'opmanager') . '</legend>';
+        echo '<div>' . __s('Create a ticket for these OpManager severities', 'opmanager') . '</div>';
+        $sev_selected = json_decode(Config::get('ticket_severities'), true) ?: [];
+        foreach (Config::SEVERITIES as $num => $label) {
+            $id = 'opm-sev-' . $num . $sfx;
+            echo sprintf(
+                '<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="ticket_severities[]" value="%d" id="%s"%s%s><label class="form-check-label" for="%s">%s</label></div>',
+                $num,
+                htmlescape($id),
+                in_array($num, $sev_selected, true) ? ' checked' : '',
+                $disabled,
+                htmlescape($id),
+                htmlescape($label)
+            );
+        }
+        echo '<div class="mt-2"><label class="form-label">' . __s('Ticket template', 'opmanager') . '</label>';
+        \TicketTemplate::dropdown([
+            'name'                => 'ticket_template',
+            'value'               => (int) Config::get('ticket_template'),
+            'display_emptychoice' => true,
+            'emptylabel'          => __('Default GLPI template', 'opmanager'),
+            'readonly'            => !$canedit,
+        ]);
+        echo '</div>';
+        echo '<div class="mt-2"><label class="form-label">' . __s('GLPI user that creates the tickets (service account)', 'opmanager') . '</label>';
+        \User::dropdown(['name' => 'service_user', 'value' => (int) Config::get('service_user'), 'right' => 'all', 'readonly' => !$canedit]);
+        echo '</div>';
+        echo '<div class="mt-2"><label class="form-label">' . __s('Default entity (no asset and no matching IP network)', 'opmanager') . '</label>';
+        \Entity::dropdown(['name' => 'ticket_entity_default', 'value' => (int) Config::get('ticket_entity_default'), 'readonly' => !$canedit]);
+        echo '</div>';
+        echo '<div class="form-check mt-2"><input class="form-check-input" type="checkbox" name="ticket_use_ipnetwork_entity" value="1" id="opm-ipnet' . $sfx . '"'
+            . (Config::get('ticket_use_ipnetwork_entity') === '1' ? ' checked' : '') . $disabled . '>';
+        echo '<label class="form-check-label" for="opm-ipnet' . $sfx . '">' . __s('Use the entity of the GLPI IP network containing the device IP', 'opmanager') . '</label></div>';
+        echo self::textRow('ticket_title_pattern' . $sfx, 'ticket_title_pattern', __('Ticket title pattern', 'opmanager'), Config::get('ticket_title_pattern'), 'text', $disabled);
+        echo '<div class="mb-2"><label class="form-label" for="ticket_content_pattern' . $sfx . '">' . __s('Ticket description pattern', 'opmanager') . '</label>'
+            . '<textarea class="form-control" rows="6" id="ticket_content_pattern' . $sfx . '" name="ticket_content_pattern"' . $disabled . '>' . htmlescape(Config::get('ticket_content_pattern')) . '</textarea>'
+            . '<div class="form-hint">' . __s('Variables: {alarm_key} {severity} {message} {device} {ip} {alarm_type} {time}', 'opmanager') . '</div></div>';
+        echo self::textRow('relink_window_hours' . $sfx, 'relink_window_hours', __('Link a repeat of the same alarm type on the same device within (hours)', 'opmanager'), Config::get('relink_window_hours'), 'number', $disabled);
+        echo self::textRow('storm_threshold' . $sfx, 'storm_threshold', __('Alarm storm: new tickets allowed per window before grouping (0 = off)', 'opmanager'), Config::get('storm_threshold'), 'number', $disabled);
+        echo self::textRow('storm_window_minutes' . $sfx, 'storm_window_minutes', __('Alarm storm window (minutes)', 'opmanager'), Config::get('storm_window_minutes'), 'number', $disabled);
+        $alast  = Config::get('last_alarm_sync');
+        $aerror = Config::get('last_alarm_sync_error');
+        echo '<div class="mt-2">' . __s('Last successful alarm sync', 'opmanager') . ': ' . htmlescape($alast !== '' ? $alast : __('never', 'opmanager')) . '</div>';
+        if ($aerror !== '') {
+            echo '<div class="alert alert-warning">' . __s('Last alarm sync error', 'opmanager') . ': ' . htmlescape($aerror) . '</div>';
+        }
+        echo '</fieldset>';
+
         $last  = Config::get('last_device_sync');
         $error = Config::get('last_device_sync_error');
         echo '<div class="mb-3">' . __s('Last successful device sync', 'opmanager') . ': ' . htmlescape($last !== '' ? $last : __('never', 'opmanager')) . '</div>';
