@@ -63,6 +63,7 @@ function plugin_opmanager_install()
             `ticket_role` VARCHAR(16) NOT NULL DEFAULT '',
             `ticket_pending` TINYINT NOT NULL DEFAULT 0,
             `ticket_created_at` TIMESTAMP NULL DEFAULT NULL,
+            `last_followup_at` TIMESTAMP NULL DEFAULT NULL,
             `mod_time` TIMESTAMP NULL DEFAULT NULL,
             `first_seen` TIMESTAMP NULL DEFAULT NULL,
             `last_change` TIMESTAMP NULL DEFAULT NULL,

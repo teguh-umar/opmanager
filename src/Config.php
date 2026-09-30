@@ -193,7 +193,17 @@ final class Config
         return ['values' => $values, 'errors' => $errors];
     }
 
-    /** @return array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, service_user: int, template_id: int, title_pattern: string, content_pattern: string, entity_default: int, use_ipnetwork: bool} */
+    /**
+     * A storm must survive the gap between two polls: every alarm of one poll shares
+     * one timestamp, so a window shorter than the poll interval ends the storm at
+     * every run (final review, 2026-09-30).
+     */
+    public static function stormIdleMinutes(int $window): int
+    {
+        return max($window, self::ALARM_SYNC_MINUTES + 1);
+    }
+
+    /** @return array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, service_user: int, template_id: int, title_pattern: string, content_pattern: string, entity_default: int, use_ipnetwork: bool} */
     public static function ticketingConfig(): array
     {
         $sev = json_decode(self::get('ticket_severities'), true);
@@ -202,6 +212,7 @@ final class Config
             'relink_window_hours'  => (int) self::get('relink_window_hours'),
             'storm_threshold'      => (int) self::get('storm_threshold'),
             'storm_window_minutes' => max(1, (int) self::get('storm_window_minutes')),
+            'storm_idle_minutes'   => self::stormIdleMinutes(max(1, (int) self::get('storm_window_minutes'))),
             'service_user'         => (int) self::get('service_user'),
             'template_id'          => (int) self::get('ticket_template'),
             'title_pattern'        => self::get('ticket_title_pattern'),

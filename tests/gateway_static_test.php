@@ -13,6 +13,10 @@ check('link uses Ticket_Ticket LINK_TO', str_contains($src, 'Ticket_Ticket::LINK
 check('solve skips solved/closed tickets', (bool) preg_match('/function solve.*?in_array\(\$status, \[5, 6\]/s', $src));
 check('no raw writes to core ticket tables', !preg_match("/DB->(insert|update|delete)\(\s*'glpi_(tickets|itilfollowups|itilsolutions)/", $src));
 
+check('create reuses a ticket already carrying the alarm externalid', (bool) preg_match('/function create\(.*?externalid.*?->add\(/s', $src));
+check('create refuses when template mandatory fields are missing', (bool) preg_match('/function create\(.*?missingMandatory/s', $src));
+check('trashed ticket reported as TRASHED, not missing', str_contains($src, 'self::TRASHED'));
+
 require OPM_ROOT . '/src/Ticketing/TicketGateway.php';
 require OPM_ROOT . '/src/Ticketing/GlpiTicketGateway.php';
 check('html escapes and keeps lines', \GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway::html("a<b>\nc") === "a&lt;b&gt;<br />\nc");

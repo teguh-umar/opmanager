@@ -96,9 +96,19 @@ final class Cron extends \CommonGLPI
             return 0;
         }
 
-        Config::set(['last_alarm_sync' => $now, 'last_alarm_sync_error' => $stats['pending'] > 0
-            ? sprintf('%d alarm ticket(s) could not be created (check template mandatory fields); retried next run', $stats['pending'])
-            : '']);
+        // Keep every problem of this run visible in Setup (hub §4: a run that half
+        // failed must not look successful).
+        $problems = [];
+        if ($stats['pending'] > 0) {
+            $problems[] = sprintf('%d alarm ticket(s) could not be created (see files/_log/opmanager.log); retried next run', $stats['pending']);
+        }
+        foreach ($sync->lastErrors() as $error) {
+            \Toolbox::logInFile('opmanager', 'AlarmSync: ' . $error . "\n");
+        }
+        if ($stats['errors'] > 0) {
+            $problems[] = sprintf('%d alarm(s) failed: %s', $stats['errors'], implode('; ', array_slice($sync->lastErrors(), 0, 3)));
+        }
+        Config::set(['last_alarm_sync' => $now, 'last_alarm_sync_error' => substr(implode(' | ', $problems), 0, 1000)]);
         $task->addVolume($stats['fetched']);
         $task->log(implode(', ', array_map(fn ($k, $v) => "{$k} {$v}", array_keys($stats), $stats)));
         return 1;

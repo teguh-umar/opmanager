@@ -4,7 +4,10 @@ namespace GlpiPlugin\Opmanager\Ticketing;
 
 interface TicketGateway
 {
-    /** Ticket status, or null when the ticket does not exist / is deleted. */
+    /** status() value for a ticket in the GLPI trash (also what a merge leaves behind). */
+    public const TRASHED = -1;
+
+    /** Ticket status, TRASHED when it is in the trash, or null when the row is gone (purged). */
     public function status(int $tickets_id): ?int;
 
     /** @return int new ticket id, 0 on failure (e.g. a mandatory template field) */

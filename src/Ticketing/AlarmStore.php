@@ -4,7 +4,7 @@ namespace GlpiPlugin\Opmanager\Ticketing;
 
 interface AlarmStore
 {
-    /** @return array{id: int, tickets_id: int, severity: int, message: string, state: string}|null */
+    /** @return array{id: int, tickets_id: int, severity: int, message: string, state: string, last_followup_at: string}|null */
     public function find(string $alarm_key): ?array;
 
     /** Upsert by alarm_key; keeps tickets_id; returns the row id. */
@@ -33,4 +33,9 @@ interface AlarmStore
     public function startStorm(int $tickets_id, string $now): void;
 
     public function hitStorm(int $tickets_id, string $now): void;
+
+    /** Ends the storm bound to this ticket (e.g. a technician closed it). */
+    public function endStorm(int $tickets_id, string $now): void;
+
+    public function markFollowup(int $id, string $now): void;
 }
