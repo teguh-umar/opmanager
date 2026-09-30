@@ -18,6 +18,11 @@ final class DeviceParser
         if (!is_array($data)) {
             throw new ClientException('OpManager device list is not valid JSON');
         }
+        // OpManager reports failures (e.g. a rejected apiKey) as HTTP 200 with
+        // {"error":{"code":5000,"message":"..."}} - verified on production 2026-09-30.
+        if (isset($data['error'])) {
+            throw new ClientException(self::errorMessage($data['error']));
+        }
         foreach (self::WRAPPERS as $wrapper) {
             if (isset($data[$wrapper]) && is_array($data[$wrapper])) {
                 $data = $data[$wrapper];
@@ -48,6 +53,16 @@ final class DeviceParser
             ];
         }
         return $out;
+    }
+
+    private static function errorMessage(mixed $error): string
+    {
+        if (is_array($error)) {
+            $code    = is_scalar($error['code'] ?? null) ? (string) $error['code'] : '?';
+            $message = is_scalar($error['message'] ?? null) ? (string) $error['message'] : 'no message';
+            return sprintf('OpManager error %s: %s', $code, $message);
+        }
+        return 'OpManager error: ' . (is_scalar($error) ? (string) $error : 'unknown');
     }
 
     /** @param string[] $keys */
