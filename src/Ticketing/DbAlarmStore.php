@@ -14,7 +14,7 @@ final class DbAlarmStore implements AlarmStore
         global $DB;
 
         $row = $DB->request([
-            'SELECT' => ['id', 'tickets_id', 'severity', 'message', 'state'],
+            'SELECT' => ['id', 'tickets_id', 'severity', 'message', 'state', 'last_followup_at'],
             'FROM'   => Alarm::getTable(),
             'WHERE'  => ['alarm_key' => $alarm_key],
             'LIMIT'  => 1,
@@ -26,6 +26,7 @@ final class DbAlarmStore implements AlarmStore
             'severity'   => (int) $row['severity'],
             'message'    => (string) $row['message'],
             'state'      => (string) $row['state'],
+            'last_followup_at' => (string) ($row['last_followup_at'] ?? ''),
         ] : null;
     }
 
@@ -206,6 +207,18 @@ final class DbAlarmStore implements AlarmStore
     {
         global $DB;
         $DB->insert(self::STORMS, ['tickets_id' => $tickets_id, 'alarm_count' => 1, 'started_at' => $now, 'last_hit_at' => $now]);
+    }
+
+    public function endStorm(int $tickets_id, string $now): void
+    {
+        global $DB;
+        $DB->update(self::STORMS, ['ended_at' => $now], ['tickets_id' => $tickets_id, 'ended_at' => null]);
+    }
+
+    public function markFollowup(int $id, string $now): void
+    {
+        global $DB;
+        $DB->update(Alarm::getTable(), ['last_followup_at' => $now], ['id' => $id]);
     }
 
     public function hitStorm(int $tickets_id, string $now): void

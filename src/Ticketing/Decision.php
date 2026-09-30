@@ -19,6 +19,12 @@ final class Decision
     public const START_STORM = 'start_storm';
     public const CREATE      = 'create';
 
+    /** Ticket status value meaning "in the GLPI trash / merged away" (same as TicketGateway::TRASHED). */
+    public const TRASHED = -1;
+
+    /** A message-only change (e.g. a live CPU value) is reported at most once per this many minutes. */
+    public const MESSAGE_FOLLOWUP_MINUTES = 60;
+
     private const SOLVED = 5;
     private const CLOSED = 6;
 
@@ -29,6 +35,10 @@ final class Decision
         $tid      = (int) ($existing['tickets_id'] ?? 0);
 
         if ($tid > 0) {
+            // Trashed or merged away by a technician: leave it alone, never re-ticket (D3).
+            if ($c['ticket_status'] === self::TRASHED) {
+                return self::out(self::NONE, $tid);
+            }
             $was_cleared = $existing['state'] === 'cleared';
             if ($c['is_clear']) {
                 return self::out($was_cleared ? self::NONE : self::CLEAR, $tid);
@@ -37,8 +47,10 @@ final class Decision
                 $closed = in_array($c['ticket_status'], [self::SOLVED, self::CLOSED], true);
                 return self::out($closed ? self::REOPEN : self::FOLLOWUP, $tid);
             }
-            $changed = $c['severity'] !== (int) $existing['severity'] || $c['message'] !== (string) $existing['message'];
-            return self::out($changed ? self::FOLLOWUP : self::NONE, $tid);
+            $severity_changed = $c['severity'] !== (int) $existing['severity'];
+            $message_changed  = $c['message'] !== (string) $existing['message'];
+            $report           = $severity_changed || ($message_changed && ($c['message_followup_due'] ?? true));
+            return self::out($report ? self::FOLLOWUP : self::NONE, $tid);
         }
 
         if ($c['is_clear'] || !$c['ticketable']) {

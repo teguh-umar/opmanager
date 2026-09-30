@@ -93,5 +93,7 @@ $b = $t;
 unset($b['ticket_use_ipnetwork_entity']);
 check('unchecked ipnetwork box stores 0', Config::sanitizeTicketing($b)['values']['ticket_use_ipnetwork_entity'] === '0');
 
+check('storm idle window never shorter than one poll', Config::stormIdleMinutes(5) === Config::ALARM_SYNC_MINUTES + 1 && Config::stormIdleMinutes(30) === 30);
+
 done();
 

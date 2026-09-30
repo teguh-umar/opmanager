@@ -46,8 +46,11 @@ sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
   - the template's predefined fields are applied.
 - [ ] Run AlarmSync again immediately: **no new tickets, no new followups** (log shows
       `created 0`, `followups 0`).
-- [ ] If any alarm shows "pending": the template has a mandatory field the plugin does not
-      fill. Write down which, and do not tick the previous box.
+- [ ] If any alarm shows "pending": `files/_log/opmanager.log` names the template's mandatory
+      field(s) the plugin could not fill (e.g. `locations_id`). Write them down, and do not tick
+      the previous box; predefine them in the template or pick another template.
+- [ ] A live-value alarm (e.g. CPU %) produces **at most one** message followup per hour; a
+      severity change still produces one immediately.
 
 ## 4. Behaviour that needs real events
 
