@@ -9,13 +9,16 @@ use GlpiPlugin\Opmanager\OpManager\ClientException;
  * One alarm poll (spec §7, D20). The active list is fetched BEFORE any write, so
  * an OpManager failure changes nothing. An alarm that vanished from the active
  * list is only processed as Clear after OpManager confirms, by entity, that this
- * very alarm is severity 5.
+ * very alarm is severity 5. One alarm failing never stops the others.
  */
 final class AlarmSync
 {
     private const CLEAR = 5;
 
-    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int} $cfg */
+    /** @var list<string> */
+    private array $errors = [];
+
+    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int} $cfg */
     public function __construct(
         private AlarmSource $source,
         private AlarmStore $store,
@@ -30,13 +33,14 @@ final class AlarmSync
     {
         $active = $this->source->listActiveAlarms();
 
-        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked'], 0);
+        $this->errors = [];
+        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
         $stats['fetched'] = count($active);
 
         $seen = [];
         foreach ($active as $alarm) {
             $seen[] = $alarm['alarm_key'];
-            $this->process($alarm, $now, $stats);
+            $this->guarded($alarm, $now, $stats);
         }
 
         foreach ($this->store->activeNotSeen($seen) as $row) {
@@ -46,11 +50,31 @@ final class AlarmSync
                 continue;
             }
             if ($current !== null && $current['alarm_key'] === $row['alarm_key'] && (int) $current['severity'] === self::CLEAR) {
-                $this->process($current, $now, $stats);
+                $this->guarded($current, $now, $stats);
             }
         }
 
         return $stats;
+    }
+
+    /** @return list<string> "alarm <key>: <message>" for every alarm that failed in the last run */
+    public function lastErrors(): array
+    {
+        return $this->errors;
+    }
+
+    /**
+     * Any failure inside GLPI (a hook of another plugin, notifications, rules)
+     * must not stop the poll or hide the problem (final review, 2026-09-30).
+     */
+    private function guarded(array $alarm, string $now, array &$stats): void
+    {
+        try {
+            $this->process($alarm, $now, $stats);
+        } catch (\Throwable $e) {
+            $stats['errors']++;
+            $this->errors[] = sprintf('alarm %s: %s', $alarm['alarm_key'], $e->getMessage());
+        }
     }
 
     private function process(array $alarm, string $now, array &$stats): void
@@ -60,7 +84,8 @@ final class AlarmSync
         if ($existing !== null && $existing['tickets_id'] > 0) {
             $status = $this->tickets->status($existing['tickets_id']);
             if ($status === null) {
-                // Ticket deleted in GLPI: treat the alarm as ticketless again.
+                // Ticket purged from GLPI: treat the alarm as ticketless again.
+                // A trashed/merged ticket (TRASHED) stays bound - Decision leaves it alone.
                 $existing['tickets_id'] = 0;
             }
         }
@@ -68,18 +93,24 @@ final class AlarmSync
         $has_ticket = $existing !== null && $existing['tickets_id'] > 0;
         $is_clear   = (int) $alarm['severity'] === self::CLEAR;
         $window     = $this->since($now, $this->cfg['storm_window_minutes'] * 60);
+        $candidate  = !$has_ticket && !$is_clear;
+
+        // A backlog alarm (older than the storm window, e.g. on the first poll after
+        // install) never starts a storm: it is not part of a burst (final review).
+        $fresh = (string) $alarm['mod_time'] === '' || (string) $alarm['mod_time'] >= $window;
 
         $decision = Decision::decide([
-            'severity'           => (int) $alarm['severity'],
-            'message'            => (string) $alarm['message'],
-            'is_clear'           => $is_clear,
-            'existing'           => $existing,
-            'ticket_status'      => $status,
-            'ticketable'         => in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true),
-            'device_open_ticket' => $has_ticket || $is_clear ? 0 : $this->openTicketFor($alarm['device_name']),
-            'storm_ticket'       => $has_ticket || $is_clear ? 0 : $this->store->activeStorm($now, $this->cfg['storm_window_minutes']),
-            'storm_should_start' => !$has_ticket && !$is_clear
+            'severity'             => (int) $alarm['severity'],
+            'message'              => (string) $alarm['message'],
+            'is_clear'             => $is_clear,
+            'existing'             => $existing,
+            'ticket_status'        => $status,
+            'ticketable'           => in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true),
+            'device_open_ticket'   => $candidate ? $this->openTicketFor($alarm['device_name']) : 0,
+            'storm_ticket'         => $candidate ? $this->liveStorm($now) : 0,
+            'storm_should_start'   => $candidate && $fresh
                 && Decision::shouldStartStorm($this->store->ownTicketsSince($window), $this->cfg['storm_threshold']),
+            'message_followup_due' => $this->followupDue($existing, $now),
         ]);
 
         $id  = $this->store->save($alarm, $this->assets->resolve($alarm), $is_clear ? 'cleared' : 'active', $now);
@@ -93,10 +124,12 @@ final class AlarmSync
                 return;
             case Decision::FOLLOWUP:
                 $this->tickets->followup($tid, Messages::changed($alarm));
+                $this->store->markFollowup($id, $now);
                 $stats['followups']++;
                 return;
             case Decision::CLEAR:
                 $this->tickets->followup($tid, Messages::cleared($alarm));
+                $this->store->markFollowup($id, $now);
                 $stats['cleared']++;
                 if ($this->store->allCleared($tid)) {
                     $this->tickets->solve($tid, Messages::solved());
@@ -105,16 +138,19 @@ final class AlarmSync
                 return;
             case Decision::REOPEN:
                 $this->tickets->reopen($tid, Messages::reopened($alarm));
+                $this->store->markFollowup($id, $now);
                 $stats['reopened']++;
                 return;
             case Decision::JOIN_DEVICE:
                 $this->tickets->followup($tid, Messages::joined($alarm));
                 $this->store->setTicket($id, $tid, 'joined', $now);
+                $this->store->markFollowup($id, $now);
                 $stats['joined']++;
                 return;
             case Decision::JOIN_STORM:
                 $this->tickets->followup($tid, Messages::joined($alarm));
                 $this->store->setTicket($id, $tid, 'storm', $now);
+                $this->store->markFollowup($id, $now);
                 $this->store->hitStorm($tid, $now);
                 $stats['storm']++;
                 return;
@@ -126,8 +162,9 @@ final class AlarmSync
                     return;
                 }
                 $this->store->startStorm($tid, $now);
-                $this->tickets->followup($tid, Messages::joined($alarm));
                 $this->store->setTicket($id, $tid, 'storm', $now);
+                $this->tickets->followup($tid, Messages::joined($alarm));
+                $this->store->markFollowup($id, $now);
                 $stats['storm']++;
                 return;
             case Decision::CREATE:
@@ -166,12 +203,33 @@ final class AlarmSync
             return 0;
         }
         foreach ($this->store->ticketsForDevice($device_name) as $tid) {
-            $status = $this->tickets->status($tid);
-            if ($status !== null && $status < 5) {
+            if (self::isOpen($this->tickets->status($tid))) {
                 return $tid;
             }
         }
         return 0;
+    }
+
+    /** The active storm ticket, or 0; a storm whose ticket a technician closed or trashed ends here. */
+    private function liveStorm(string $now): int
+    {
+        $storm = $this->store->activeStorm($now, $this->cfg['storm_idle_minutes']);
+        if ($storm > 0 && !self::isOpen($this->tickets->status($storm))) {
+            $this->store->endStorm($storm, $now);
+            return 0;
+        }
+        return $storm;
+    }
+
+    private function followupDue(?array $existing, string $now): bool
+    {
+        $last = (string) ($existing['last_followup_at'] ?? '');
+        return $last === '' || $last <= $this->since($now, Decision::MESSAGE_FOLLOWUP_MINUTES * 60);
+    }
+
+    private static function isOpen(?int $status): bool
+    {
+        return $status !== null && $status >= 1 && $status < 5;
     }
 
     private function since(string $now, int $seconds): string

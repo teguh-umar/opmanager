@@ -20,17 +20,41 @@ final class GlpiTicketGateway implements TicketGateway
     public function status(int $tickets_id): ?int
     {
         $ticket = new \Ticket();
-        if (!$ticket->getFromDB($tickets_id) || !empty($ticket->fields['is_deleted'])) {
+        if (!$ticket->getFromDB($tickets_id)) {
             return null;
+        }
+        // In the trash, which is also where Ticket::merge() leaves merged tickets:
+        // report it so the alarm stays bound and is never re-ticketed (final review).
+        if (!empty($ticket->fields['is_deleted'])) {
+            return self::TRASHED;
         }
         return (int) $ticket->fields['status'];
     }
 
     public function create(array $alarm, array $asset): int
     {
-        $entity                     = $this->entityFor($alarm, $asset);
-        [$template_id, $predefined] = $this->template($entity);
+        // A previous run may have created the ticket and then failed before the
+        // alarm row was updated: find it by its externalid instead of adding again.
+        $externalid = TicketBuilder::externalId((string) $alarm['alarm_key']);
+        $found      = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0], ['id DESC'], 1);
+        if ($found !== []) {
+            return (int) array_key_first($found);
+        }
+
+        $entity                                 = $this->entityFor($alarm, $asset);
+        [$template_id, $predefined, $mandatory] = $this->template($entity);
         $input = TicketBuilder::build($alarm, $asset, $entity, $predefined, $template_id, $this->cfg);
+
+        $missing = TicketBuilder::missingMandatory($input, $mandatory);
+        if ($missing !== []) {
+            \Toolbox::logInFile('opmanager', sprintf(
+                "AlarmSync: alarm %s not ticketed, template %d mandatory field(s) not filled: %s\n",
+                $alarm['alarm_key'],
+                $template_id,
+                implode(', ', $missing)
+            ));
+            return 0;
+        }
 
         $ticket = new \Ticket();
         $id     = $ticket->add($input);
@@ -43,6 +67,8 @@ final class GlpiTicketGateway implements TicketGateway
         [$template_id, $predefined] = $this->template($entity);
         $cfg   = ['title_pattern' => Messages::stormTitle($now), 'content_pattern' => Messages::stormTitle($now)] + $this->cfg;
         $input = TicketBuilder::build($alarm, ['itemtype' => '', 'items_id' => 0], $entity, $predefined, $template_id, $cfg);
+        // The storm ticket is not the alarm's own ticket: do not claim its externalid.
+        $input['externalid'] = 'opmanager:storm:' . $now;
 
         $ticket = new \Ticket();
         $id     = $ticket->add($input);
@@ -144,17 +170,17 @@ final class GlpiTicketGateway implements TicketGateway
         return EntityResolver::resolve($asset_entity, (string) $alarm['ip_address'], $networks, (bool) $this->cfg['use_ipnetwork'], (int) $this->cfg['entity_default']);
     }
 
-    /** @return array{0: int, 1: array<string, mixed>} template id and its predefined fields */
+    /** @return array{0: int, 1: array<string, mixed>, 2: array<string, mixed>} template id, predefined and mandatory fields */
     private function template(int $entity): array
     {
         if ((int) $this->cfg['template_id'] > 0) {
             $tt = new \TicketTemplate();
             if ($tt->getFromDBWithData((int) $this->cfg['template_id'])) {
-                return [(int) $tt->getID(), (array) $tt->predefined];
+                return [(int) $tt->getID(), (array) $tt->predefined, (array) $tt->mandatory];
             }
         }
         $tt = (new \Ticket())->getITILTemplateToUse(0, \Ticket::INCIDENT_TYPE, 0, $entity);
-        return [(int) $tt->getID(), (array) $tt->predefined];
+        return [(int) $tt->getID(), (array) $tt->predefined, (array) $tt->mandatory];
     }
 
     /**

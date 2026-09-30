@@ -43,8 +43,35 @@ final class TicketBuilder
             $input['items_id'] = [$asset['itemtype'] => [$asset['items_id']]];
         }
         $input['_tickettemplate'] = $template_id;
+        $input['externalid']      = self::externalId((string) ($alarm['alarm_key'] ?? ''));
 
         return $input;
+    }
+
+    /** Marks a ticket as belonging to one OpManager alarm, so a retry can find it (D3). */
+    public static function externalId(string $alarm_key): string
+    {
+        return 'opmanager:' . $alarm_key;
+    }
+
+    /**
+     * GLPI only enforces a template's mandatory fields that are present in the
+     * input (CommonITILObject::prepareInputForAdd), so check the rest ourselves.
+     *
+     * @param array<string, mixed> $input
+     * @param array<string, mixed> $mandatory template field => search option id
+     * @return list<string>
+     */
+    public static function missingMandatory(array $input, array $mandatory): array
+    {
+        $missing = [];
+        foreach (array_keys($mandatory) as $field) {
+            $value = $input[$field] ?? null;
+            if ($value === null || $value === '' || $value === 0 || $value === '0' || $value === []) {
+                $missing[] = (string) $field;
+            }
+        }
+        return $missing;
     }
 
     /** @return array<string, string> */

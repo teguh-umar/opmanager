@@ -51,4 +51,12 @@ $long = TicketBuilder::render(str_repeat('x', 300), [], false);
 check('title capped at 250 chars', strlen($long) === 250);
 check('device falls back to device_name', TicketBuilder::vars(['display_name' => ''] + $alarm)['{device}'] === '10.20.3.139.10000000001');
 
+// Final review Important 5: the ticket carries the alarm id, so a retry can find it.
+check('externalid identifies the alarm', TicketBuilder::build($alarm, $asset, 7, [], 3, $cfg)['externalid'] === 'opmanager:10000003244');
+check('externalid helper', TicketBuilder::externalId('42') === 'opmanager:42');
+// Final review Important 6: GLPI only checks mandatory fields present in the input.
+$in = TicketBuilder::build($alarm, $asset, 7, ['itilcategories_id' => 11], 3, $cfg);
+check('missing mandatory fields reported', TicketBuilder::missingMandatory($in, ['itilcategories_id' => 7, 'locations_id' => 83, '_groups_id_assign' => 8, 'name' => 1]) === ['locations_id', '_groups_id_assign']);
+check('no mandatory fields → nothing missing', TicketBuilder::missingMandatory($in, []) === []);
+
 done();

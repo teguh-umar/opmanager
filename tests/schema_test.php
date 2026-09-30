@@ -36,4 +36,6 @@ check('alarms keep entity_key for notes/clear', str_contains($src, '`entity_key`
 check('uninstall drops the new tables', str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_alarms')
     && str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_storms'));
 
+check('alarms track last followup time', str_contains($src, '`last_followup_at` TIMESTAMP'));
+
 done();
