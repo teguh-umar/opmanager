@@ -85,6 +85,7 @@ final class TicketBuilder
             '{ip}'         => (string) ($alarm['ip_address'] ?? ''),
             '{alarm_type}' => (string) ($alarm['alarm_code'] ?? ''),
             '{time}'       => (string) ($alarm['mod_time'] ?? ''),
+            '{category}'   => (string) ($alarm['category'] ?? ''),
         ];
     }
 

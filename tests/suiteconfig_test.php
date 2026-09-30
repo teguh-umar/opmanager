@@ -57,6 +57,9 @@ namespace {
     require OPM_ROOT . '/src/Config.php';
     require OPM_ROOT . '/src/CustomAssets.php';
     require OPM_ROOT . '/src/RightDefinition.php';
+    require OPM_ROOT . '/src/Ticketing/ProductionCheck.php';
+    require OPM_ROOT . '/src/Ticketing/RangeProductionCheck.php';
+    require OPM_ROOT . '/src/Ticketing/AddressingRanges.php';
     require OPM_ROOT . '/src/SuiteConfig.php';
 
     use GlpiPlugin\Opmanager\RightDefinition as R;
@@ -90,6 +93,8 @@ namespace {
     foreach (['ticket_severities[]', 'ticket_template', 'service_user', 'ticket_entity_default', 'ticket_title_pattern', 'ticket_content_pattern', 'relink_window_hours', 'storm_threshold', 'storm_window_minutes'] as $field) {
         check("ticketing field {$field} rendered", str_contains($html, "name='{$field}'") || str_contains($html, 'name="' . $field . '"'));
     }
+
+    check('warning when no IP Addressing range is available', str_contains($html, 'No ticket will be created'));
 
     done();
 }

@@ -106,6 +106,26 @@ final class SuiteConfig
                 htmlescape($label)
             );
         }
+        echo '<div class="mt-2">' . __s('Production IP ranges (Tools > IP Addressing): tickets are created only for alarms on these', 'opmanager') . '</div>';
+        $prod_selected = array_map('intval', (array) (json_decode(Config::get('production_addressings'), true) ?: []));
+        $prod_options  = \GlpiPlugin\Opmanager\Ticketing\AddressingRanges::options();
+        foreach ($prod_options as $rid => $rlabel) {
+            $id = 'opm-prod-' . $rid . $sfx;
+            echo sprintf(
+                '<div class="form-check"><input class="form-check-input" type="checkbox" name="production_addressings[]" value="%d" id="%s"%s%s><label class="form-check-label" for="%s">%s</label></div>',
+                $rid,
+                htmlescape($id),
+                in_array($rid, $prod_selected, true) ? ' checked' : '',
+                $disabled,
+                htmlescape($id),
+                htmlescape($rlabel)
+            );
+        }
+        if ($prod_options === []) {
+            echo '<div class="alert alert-warning">' . __s('No IP Addressing range found (is the IP Addressing plugin active?). No ticket will be created.', 'opmanager') . '</div>';
+        } elseif (array_intersect($prod_selected, array_keys($prod_options)) === []) {
+            echo '<div class="alert alert-warning">' . __s('No production range selected: alarms are stored but no ticket is created.', 'opmanager') . '</div>';
+        }
         echo '<div class="mt-2"><label class="form-label">' . __s('Ticket template', 'opmanager') . '</label>';
         \TicketTemplate::dropdown([
             'name'                => 'ticket_template',
@@ -127,7 +147,7 @@ final class SuiteConfig
         echo self::textRow('ticket_title_pattern' . $sfx, 'ticket_title_pattern', __('Ticket title pattern', 'opmanager'), Config::get('ticket_title_pattern'), 'text', $disabled);
         echo '<div class="mb-2"><label class="form-label" for="ticket_content_pattern' . $sfx . '">' . __s('Ticket description pattern', 'opmanager') . '</label>'
             . '<textarea class="form-control" rows="6" id="ticket_content_pattern' . $sfx . '" name="ticket_content_pattern"' . $disabled . '>' . htmlescape(Config::get('ticket_content_pattern')) . '</textarea>'
-            . '<div class="form-hint">' . __s('Variables: {alarm_key} {severity} {message} {device} {ip} {alarm_type} {time}', 'opmanager') . '</div></div>';
+            . '<div class="form-hint">' . __s('Variables: {alarm_key} {severity} {message} {device} {ip} {alarm_type} {time} {category}', 'opmanager') . '</div></div>';
         echo self::textRow('relink_window_hours' . $sfx, 'relink_window_hours', __('Link a repeat of the same alarm type on the same device within (hours)', 'opmanager'), Config::get('relink_window_hours'), 'number', $disabled);
         echo self::textRow('storm_threshold' . $sfx, 'storm_threshold', __('Alarm storm: new tickets allowed per window before grouping (0 = off)', 'opmanager'), Config::get('storm_threshold'), 'number', $disabled);
         echo self::textRow('storm_window_minutes' . $sfx, 'storm_window_minutes', __('Alarm storm window (minutes)', 'opmanager'), Config::get('storm_window_minutes'), 'number', $disabled);

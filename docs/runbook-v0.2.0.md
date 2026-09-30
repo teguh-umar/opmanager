@@ -31,8 +31,12 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 - [ ] `DeviceSync` still works after the header-auth change:
       `sudo -u nginx php /data/www/glpi/front/cron.php DeviceSync` → "Last successful device sync" updates.
 - [ ] Setup > PGN Suite > OpManager > "Tickets from alarms": service user, template and default
-      entity set, and **only Critical** ticked. Save; then selfcheck prints `ALL PASS`
-      (including `tickets/service-user` and `tickets/template-resolves`).
+      entity set, **only Critical** ticked, and the **production IP ranges** ticked (e.g.
+      "Prodcution IT", "Production OT"). Save; then selfcheck prints `ALL PASS`
+      (including `tickets/service-user`, `tickets/production-ranges` and
+      `tickets/template-resolves`).
+- [ ] Optional: paste the old middleware's Indonesian text into the title/description patterns
+      (variables `{device}`, `{ip}`, `{category}`, `{severity}`, `{time}`, `{alarm_key}`, `{message}`).
 
 ## 3. First alarm sync
 
@@ -43,7 +47,8 @@ sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
 
 - [ ] Automatic action log shows `fetched N, created …`. N should be about the number of active
       alarms in OpManager (about 40 on 2026-09-30).
-- [ ] OpManager > OpManager alarms lists them; Critical ones have a ticket number.
+- [ ] OpManager > OpManager alarms lists them; Critical alarms **on production IPs** have a ticket
+      number, and a Critical alarm outside the production ranges has none.
 - [ ] Open one created ticket:
   - title/description come from the patterns;
   - the entity is the asset's entity;

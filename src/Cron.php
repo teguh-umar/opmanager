@@ -6,11 +6,13 @@ use GlpiPlugin\Opmanager\Matching\DbAssetLookup;
 use GlpiPlugin\Opmanager\Matching\Matcher;
 use GlpiPlugin\Opmanager\OpManager\Client;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
+use GlpiPlugin\Opmanager\Ticketing\AddressingRanges;
 use GlpiPlugin\Opmanager\Ticketing\AlarmAssetResolver;
 use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
 use GlpiPlugin\Opmanager\Ticketing\DbDeviceIndex;
 use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
+use GlpiPlugin\Opmanager\Ticketing\RangeProductionCheck;
 
 final class Cron extends \CommonGLPI
 {
@@ -79,6 +81,8 @@ final class Cron extends \CommonGLPI
             return 0;
         }
 
+        $ranges = AddressingRanges::load($cfg['production_addressings']);
+
         try {
             $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1');
             $sync   = new AlarmSync(
@@ -86,6 +90,7 @@ final class Cron extends \CommonGLPI
                 new DbAlarmStore(),
                 new GlpiTicketGateway($cfg),
                 new AlarmAssetResolver(new DbDeviceIndex(), new Matcher(new DbAssetLookup(Config::assetItemtypes())), Config::get('match_mode')),
+                new RangeProductionCheck($ranges, [AddressingRanges::class, 'assetIps']),
                 $cfg
             );
             $stats = $sync->run($now);
@@ -99,6 +104,9 @@ final class Cron extends \CommonGLPI
         // Keep every problem of this run visible in Setup (hub §4: a run that half
         // failed must not look successful).
         $problems = [];
+        if ($ranges === [] && $cfg['ticket_severities'] !== []) {
+            $problems[] = 'no production IP range selected in Setup: alarms are stored but no ticket is created';
+        }
         if ($stats['pending'] > 0) {
             $problems[] = sprintf('%d alarm ticket(s) could not be created (see files/_log/opmanager.log); retried next run', $stats['pending']);
         }
