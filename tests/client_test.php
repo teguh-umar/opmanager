@@ -1,7 +1,7 @@
 <?php
 
 require __DIR__ . '/bootstrap.php';
-foreach (['ClientException', 'DeviceSource', 'DeviceParser', 'Client'] as $f) {
+foreach (['ClientException', 'ResponseGuard', 'DeviceSource', 'AlarmSource', 'DeviceParser', 'AlarmParser', 'Client'] as $f) {
     require OPM_ROOT . "/src/OpManager/{$f}.php";
 }
 
@@ -34,14 +34,15 @@ check('object without a known list throws', $threw(fn () => DeviceParser::parse(
 check('redact removes apiKey', Client::redact('GET https://opm/api?apiKey=S3CRET&x=1 failed') === 'GET https://opm/api?apiKey=***&x=1 failed');
 
 $seen = [];
-$transport = function (string $url, array $query) use (&$seen, $list) {
-    $seen = [$url, $query];
+$transport = function (string $url, array $query, array $headers) use (&$seen, $list) {
+    $seen = [$url, $query, $headers];
     return ['status' => 200, 'body' => $list];
 };
 $client = new Client('https://opm:8061/', 'S3CRET', true, $transport);
 check('listDevices parses response', count($client->listDevices()) === 2);
 check('calls the device list endpoint', $seen[0] === 'https://opm:8061/api/json/device/listDevices');
-check('api key sent as query param', ($seen[1]['apiKey'] ?? null) === 'S3CRET');
+check('api key sent as header', ($seen[2]['apiKey'] ?? null) === 'S3CRET');
+check('api key never in the query string', !array_key_exists('apiKey', $seen[1]));
 
 $client = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 401, 'body' => 'nope']);
 try {
@@ -77,6 +78,23 @@ try {
 } catch (ClientException $e) {
     check('string error surfaced', str_contains($e->getMessage(), 'plain text failure'));
 }
+
+require_once OPM_ROOT . '/src/OpManager/AlarmSource.php';
+require_once OPM_ROOT . '/src/OpManager/AlarmParser.php';
+$alarmJson = json_encode([
+    ['alarmId' => '1', 'entity' => 'E1', 'numericSeverity' => 1, 'severityString' => 'Critical'],
+    ['alarmId' => '2', 'entity' => 'E2', 'numericSeverity' => 5, 'severityString' => 'Clear'],
+]);
+$calls = [];
+$client = new Client('https://opm', 'S3CRET', true, function (string $url, array $query, array $headers) use (&$calls, $alarmJson) {
+    $calls[] = [$url, $query];
+    return ['status' => 200, 'body' => $alarmJson];
+});
+check('active alarms use the ActiveAlarms filter', count($client->listActiveAlarms()) === 2
+    && $calls[0] === ['https://opm/api/json/alarm/listAlarms', ['alertType' => 'ActiveAlarms']]);
+$one = $client->alarmByEntity('E2');
+check('alarm by entity filters on entity', $calls[1][1] === ['entity' => 'E2'] && ($one['alarm_key'] ?? null) === '2');
+check('alarm by entity returns null when absent', $client->alarmByEntity('E9') === null);
 
 check('unconfigured client refuses', $threw(fn () => (new Client('', '', true, $transport))->listDevices()));
 
