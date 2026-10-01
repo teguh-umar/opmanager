@@ -13,12 +13,8 @@ if (isset($_POST['generate_webhook_token'])) {
     Session::checkRight(RightDefinition::CONFIG, UPDATE);
     $token = Config::newWebhookToken();
     Config::set(['webhook_token' => $token]);
-    // Shown exactly once; afterwards only "stored" is displayed (Review Focus 5).
-    Session::addMessageAfterRedirect(
-        sprintf(__s('New webhook token (copy it into OpManager now, it is not shown again): %s', 'opmanager'), htmlescape($token)),
-        false,
-        WARNING
-    );
+    // Shown exactly once, inline in the Setup form (a toast hides itself after 10 s).
+    $_SESSION[SuiteConfig::NEW_TOKEN_KEY] = $token;
     if (!empty($_POST[SuiteConfig::FROM_SUITE_FIELD])) {
         Html::redirect(ConfigTab::getReturnUrl(SuiteConfig::SECTION));
     }
