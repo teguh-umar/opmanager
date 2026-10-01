@@ -41,4 +41,7 @@ check('non-JSON rejected', $threw(fn () => AlarmParser::parse('<html>'), 'alarm 
 check('object without list rejected', $threw(fn () => AlarmParser::parse('{"x":1}'), 'alarm list has an unexpected shape'));
 check('empty list is fine', AlarmParser::parse('[]') === []);
 
+// Production probe 2026-10-01: rights/method errors use {"message","errorcode"}.
+check('errorcode shape surfaced', $threw(fn () => AlarmParser::parse('{"error":{"message":"You are not authorized to perform this operation","errorcode":"AUTHORIZATION_FAILED"}}'), 'OpManager error AUTHORIZATION_FAILED: You are not authorized'));
+
 done();
