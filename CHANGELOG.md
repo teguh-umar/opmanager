@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.2
+
+- Fix: alarm and device sync failed with "Undefined constant
+  GuzzleHttp\ClientInterface::MAJOR_VERSION" when another plugin (telegrambot) ships its own
+  Guzzle 6. The OpManager client now uses ext-curl directly.
+
 ## 0.2.1
 
 - The default ticket description now carries `Category: {category}` (OpManager's device
