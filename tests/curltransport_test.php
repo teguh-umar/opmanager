@@ -9,7 +9,7 @@ if (!extension_loaded('curl')) {
 }
 
 require __DIR__ . '/bootstrap.php';
-foreach (['ClientException', 'ResponseGuard', 'DeviceSource', 'AlarmSource', 'DeviceParser', 'AlarmParser', 'Client'] as $f) {
+foreach (['ClientException', 'ResponseGuard', 'DeviceSource', 'AlarmSource', 'DeviceParser', 'AlarmParser', 'AlarmWriter', 'Client'] as $f) {
     require OPM_ROOT . "/src/OpManager/{$f}.php";
 }
 
@@ -44,6 +44,11 @@ try {
     $client->alarmByEntity('E 1&x');
     $seen = json_decode((string) file_get_contents($log), true);
     check('query parameters encoded', ($seen['query'] ?? null) === ['entity' => 'E 1&x']);
+
+    $client->addNote('IF-1.2_Poll', 'note from test');
+    $seen = json_decode((string) file_get_contents($log), true);
+    check('curl POSTs the form body', ($seen['method'] ?? '') === 'POST' && ($seen['form'] ?? null) === ['entity' => 'IF-1.2_Poll', 'notes' => 'note from test']);
+    check('curl POST keeps the key in the header only', ($seen['apikey'] ?? null) === 'S3CRET' && !isset($seen['form']['apiKey']) && !isset($seen['query']['apiKey']));
 
     try {
         (new Client("http://127.0.0.1:{$port}/fail", 'S3CRET', true))->listDevices();
