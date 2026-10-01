@@ -32,7 +32,18 @@ final class Config
 
     public const DEFAULT_TITLE_PATTERN = '[OPM-{alarm_key}] {severity}: {message} - {device}';
 
-    public const DEFAULT_CONTENT_PATTERN = "OpManager alarm {alarm_key}\nDevice: {device} ({ip})\nSeverity: {severity}\nAlarm type: {alarm_type}\nTime: {time}\n\n{message}";
+    /**
+     * "Category: {category}" carries OpManager's device category (Server, Switch,
+     * Firewall, ...) so GLPI's own ticket business rules can map it to an ITIL
+     * category (user decision 2026-10-01, rule criterion: Description contains
+     * "Category: Server").
+     */
+    public const DEFAULT_CONTENT_PATTERN = "OpManager alarm {alarm_key}\nDevice: {device} ({ip})\nCategory: {category}\nSeverity: {severity}\nAlarm type: {alarm_type}\nTime: {time}\n\n{message}";
+
+    /** Earlier defaults; an install still using one of them is upgraded, a customised pattern never is. */
+    public const PREVIOUS_CONTENT_PATTERNS = [
+        "OpManager alarm {alarm_key}\nDevice: {device} ({ip})\nSeverity: {severity}\nAlarm type: {alarm_type}\nTime: {time}\n\n{message}",
+    ];
 
     public const DEFAULTS = [
         'opm_url'                => '',
@@ -84,6 +95,12 @@ final class Config
         if ($missing !== []) {
             \Config::setConfigurationValues(self::CONTEXT, $missing);
         }
+    }
+
+    /** Pure: the pattern to store on upgrade, or null to keep the current one. */
+    public static function upgradedContentPattern(string $current): ?string
+    {
+        return in_array($current, self::PREVIOUS_CONTENT_PATTERNS, true) ? self::DEFAULT_CONTENT_PATTERN : null;
     }
 
     /** @return array<string, string> mode => label, keys identical to MATCH_MODES */
