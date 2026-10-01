@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.0
+
+- OpManager webhook receiver `/plugins/opmanager/front/webhook.php`:
+  - OpManager "Invoke a Webhook" POSTs `{"alarm_id":"$alarmid","entity":"$entity"}` with header
+    `X-OPM-Token`; the alarm is fetched from the API and processed by the same engine as
+    AlarmSync, so tickets appear and are solved within seconds;
+  - the 10-minute poll stays as the safety net.
+- The token is generated in Setup, stored encrypted, and shown once.
+- Cron and webhook share a MySQL lock, so one alarm is never ticketed twice.
+- Alarm filter for new tickets (Setup > Tickets from alarms): tick OpManager event types
+  and/or list message keywords; mode Exclude (e.g. no ticket for CPU Utilization) or Only.
+  Filtered alarms are still stored and shown; alarms that already have a ticket are unaffected.
+- The webhook creates tickets with the same rights and entities as the cron, re-reads the
+  alarm only after taking the lock, shows a new token once in the Setup form, and logs
+  every non-200 answer.
+- Fix: ticket patterns saved from the Setup textarea (CRLF) are normalised, and the
+  0.2.1 description upgrade now also recognises them.
+
 ## 0.2.2
 
 - Fix: alarm and device sync failed with "Undefined constant
