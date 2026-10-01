@@ -42,7 +42,10 @@ $receiver = new Receiver(
             new RangeProductionCheck(AddressingRanges::load($cfg['production_addressings']), [AddressingRanges::class, 'assetIps']),
             $cfg
         );
-        $stats = $sync->processOne($alarm, (string) \Session::getCurrentTime());
+        // Same context as the cron: no profile here, so without this every haveRight() is
+        // false and Ticket::add() drops template SLA/OLA and recomputes the priority.
+        \Session::loadEntity(0, true);
+        $stats = \Session::callAsSystem(static fn () => $sync->processOne($alarm, (string) \Session::getCurrentTime()));
         foreach ($sync->lastErrors() as $error) {
             \Toolbox::logInFile('opmanager', 'Webhook: ' . $error . "\n");
         }
@@ -56,8 +59,14 @@ $result = $receiver->handle(
     (string) file_get_contents('php://input', false, null, 0, Receiver::MAX_BODY + 1)
 );
 
-if ($result['status'] >= 400) {
-    \Toolbox::logInFile('opmanager', sprintf("Webhook: HTTP %d %s from %s\n", $result['status'], $result['body']['message'] ?? '', $_SERVER['REMOTE_ADDR'] ?? '?'));
+if ($result['status'] !== 200) {
+    \Toolbox::logInFile('opmanager', sprintf(
+        "Webhook: HTTP %d %s (alarm %s) from %s\n",
+        $result['status'],
+        $result['body']['message'] ?? '',
+        $result['body']['alarm_id'] ?? '-',
+        $_SERVER['REMOTE_ADDR'] ?? '?'
+    ));
 }
 http_response_code($result['status']);
 header('Content-Type: application/json');

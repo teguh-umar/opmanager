@@ -13,6 +13,9 @@ final class SuiteConfig
     /** Hidden field marking a POST that came from the PGN Suite tab. */
     public const FROM_SUITE_FIELD = '_from_pgnsuite';
 
+    /** Session key holding a freshly generated webhook token until the form shows it once. */
+    public const NEW_TOKEN_KEY = 'plugin_opmanager_new_webhook_token';
+
     public static function section(): ?array
     {
         if (!\Session::haveRight(RightDefinition::CONFIG, READ)) {
@@ -99,6 +102,12 @@ final class SuiteConfig
         echo '<div class="mb-1">' . __s('Header', 'opmanager') . ': <code>' . htmlescape(Config::WEBHOOK_HEADER) . '</code> = '
             . (Config::get('webhook_token') !== '' ? __s('stored token (shown once when generated)', 'opmanager') : '<strong>' . __s('not set - webhook disabled', 'opmanager') . '</strong>') . '</div>';
         echo '<div class="mb-1">' . __s('Body', 'opmanager') . ': <code>{"alarm_id":"$alarmid","entity":"$entity"}</code></div>';
+        $new_token = (string) ($_SESSION[self::NEW_TOKEN_KEY] ?? '');
+        unset($_SESSION[self::NEW_TOKEN_KEY]);
+        if ($new_token !== '') {
+            echo '<div class="alert alert-warning mt-2">' . __s('New webhook token - copy it into OpManager now, it is not shown again:', 'opmanager')
+                . '<input type="text" class="form-control font-monospace mt-1" readonly onclick="this.select()" value="' . htmlescape($new_token) . '"></div>';
+        }
         if ($canedit) {
             echo '<div class="mt-1">' . \Html::submit(__('Generate new token', 'opmanager'), ['name' => 'generate_webhook_token', 'class' => 'btn btn-outline-secondary']) . '</div>';
         }
