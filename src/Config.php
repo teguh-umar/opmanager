@@ -97,10 +97,16 @@ final class Config
         }
     }
 
+    /** Pure: CRLF / CR -> LF (a browser textarea posts CRLF). */
+    public static function normaliseLines(string $text): string
+    {
+        return str_replace(["\r\n", "\r"], "\n", $text);
+    }
+
     /** Pure: the pattern to store on upgrade, or null to keep the current one. */
     public static function upgradedContentPattern(string $current): ?string
     {
-        return in_array($current, self::PREVIOUS_CONTENT_PATTERNS, true) ? self::DEFAULT_CONTENT_PATTERN : null;
+        return in_array(self::normaliseLines($current), self::PREVIOUS_CONTENT_PATTERNS, true) ? self::DEFAULT_CONTENT_PATTERN : null;
     }
 
     /** @return array<string, string> mode => label, keys identical to MATCH_MODES */
@@ -189,7 +195,7 @@ final class Config
         }
 
         foreach (['ticket_title_pattern' => 250, 'ticket_content_pattern' => 5000] as $key => $max) {
-            $v = trim((string) ($post[$key] ?? ''));
+            $v = trim(self::normaliseLines((string) ($post[$key] ?? '')));
             if ($v === '' || strlen($v) > $max) {
                 $errors[] = sprintf(__('%s must be 1 to %d characters', 'opmanager'), $key, $max);
             } else {

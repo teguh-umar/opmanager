@@ -107,5 +107,12 @@ check('upgrade replaces an untouched old default', Config::upgradedContentPatter
 check('upgrade keeps a customised pattern', Config::upgradedContentPattern("Dear Rekan PGN\n{message}") === null);
 check('installer runs the pattern upgrade', str_contains((string) file_get_contents(OPM_ROOT . '/install/install.php'), 'Config::upgradedContentPattern('));
 
+// v0.3.0: a textarea posts \r\n; stored patterns and the upgrade compare must not care.
+$crlf = str_replace("\n", "\r\n", Config::PREVIOUS_CONTENT_PATTERNS[0]);
+check('upgrade recognises an old default saved with CRLF', Config::upgradedContentPattern($crlf) === Config::DEFAULT_CONTENT_PATTERN);
+$r = Config::sanitizeTicketing(['ticket_content_pattern' => "Line 1\r\nLine 2\rLine 3"] + $t);
+check('patterns stored with \n only', $r['values']['ticket_content_pattern'] === "Line 1\nLine 2\nLine 3");
+check('normaliseLines helper', Config::normaliseLines("a\r\nb\rc\n") === "a\nb\nc\n");
+
 done();
 
