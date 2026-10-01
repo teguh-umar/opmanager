@@ -96,6 +96,13 @@ function plugin_opmanager_install()
 
     Config::setDefaults();
 
+    // setDefaults() never touches a stored value, so move an untouched old default
+    // description pattern to the current one (v0.2.1 adds the OpManager category).
+    $new_pattern = Config::upgradedContentPattern(Config::get('ticket_content_pattern'));
+    if ($new_pattern !== null) {
+        Config::set(['ticket_content_pattern' => $new_pattern]);
+    }
+
     $new_rights = array_values(array_diff(
         RightDefinition::names(),
         array_keys(ProfileRight::getAllPossibleRights())

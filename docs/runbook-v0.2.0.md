@@ -63,6 +63,28 @@ sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
 - [ ] A live-value alarm (e.g. CPU %) produces **at most one** message followup per hour; a
       severity change still produces one immediately.
 
+## 3b. Ticket category through GLPI business rules (v0.2.1)
+
+The Behaviors plugin requires a category before a ticket can be Solved/Closed. Tickets get
+one from GLPI's own rules, which run on every ticket the plugin creates
+(`Ticket::prepareInputForAdd` → `processRules(ONADD)`).
+
+- [ ] Setup > PGN Suite > OpManager: the ticket description contains the line
+      `Category: {category}`. That is the default since v0.2.1; if the description was
+      customised, add the line by hand.
+- [ ] Administration > Rules > **Business rules for tickets**: one rule per OpManager
+      category, condition "On add", criterion **Description contains** `Category: Server`,
+      action **Category** = the ITIL category for servers. Repeat for `Category: Switch`,
+      `Category: Firewall`, `Category: Storage`, `Category: Wireless`, and so on. The
+      categories that exist are in the OpManager devices list, column Category. The same
+      rule can also assign the technician group if Behaviors requires one.
+- [ ] Keep one category **predefined in the ticket template** as a fallback for categories
+      without a rule. A matching rule overrides it.
+- [ ] Run AlarmSync, open a new alarm ticket: its category is the mapped one, and a
+      technician can Solve it without the "Category is mandatory" error.
+- [ ] Tickets created before the rules existed have no category. Set it by hand, or with
+      a massive action on the ticket list, before they are closed.
+
 ## 4. Behaviour that needs real events
 
 For each item below, if the event did not happen during the test window, write
