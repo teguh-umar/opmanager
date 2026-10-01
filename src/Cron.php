@@ -6,6 +6,8 @@ use GlpiPlugin\Opmanager\Matching\DbAssetLookup;
 use GlpiPlugin\Opmanager\Matching\Matcher;
 use GlpiPlugin\Opmanager\OpManager\Client;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
+use GlpiPlugin\Opmanager\Outbound\DbOutboxStore;
+use GlpiPlugin\Opmanager\Outbound\Sender;
 use GlpiPlugin\Opmanager\Ticketing\AddressingRanges;
 use GlpiPlugin\Opmanager\Ticketing\AlarmAssetResolver;
 use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
@@ -27,6 +29,7 @@ final class Cron extends \CommonGLPI
         return match ($name) {
             'DeviceSync' => ['description' => __('Sync OpManager devices and match them to GLPI assets', 'opmanager')],
             'AlarmSync'  => ['description' => __('Pull active OpManager alarms and create/update tickets', 'opmanager')],
+            'OutboxSend' => ['description' => __('Send queued notes and clears to OpManager', 'opmanager')],
             default      => [],
         };
     }
@@ -130,5 +133,20 @@ final class Cron extends \CommonGLPI
         $task->addVolume($stats['fetched']);
         $task->log(implode(', ', array_map(fn ($k, $v) => "{$k} {$v}", array_keys($stats), $stats)));
         return 1;
+    }
+
+    /** Plan 3: retries what the GLPI hooks could not send at once (spec §8). */
+    public static function cronOutboxSend(\CronTask $task): int
+    {
+        $now    = (string) \Session::getCurrentTime();
+        $cfg    = Config::ticketingConfig();
+        $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1');
+        $sender = new Sender(new DbOutboxStore(), $client, $cfg['outbound_max_attempts']);
+        $stats  = $sender->run($now, 200);
+        foreach ($sender->lastErrors() as $error) {
+            $task->log('Outbound: ' . $error);
+        }
+        $task->addVolume($stats['sent']);
+        return ($stats['sent'] + $stats['retried'] + $stats['failed']) > 0 ? 1 : 0;
     }
 }

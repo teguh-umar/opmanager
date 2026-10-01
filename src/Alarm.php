@@ -75,6 +75,13 @@ class Alarm extends CommonDBTM
         ];
     }
 
+    /** The table has no `name` column: without this GLPI titles the page "N/A". */
+    public function getName($options = [])
+    {
+        $name = trim(($this->fields['display_name'] ?? '') . ' - ' . ($this->fields['alarm_key'] ?? ''), ' -');
+        return $name !== '' ? $name : parent::getName($options);
+    }
+
     public function showForm($ID, array $options = [])
     {
         if (!$this->getFromDB((int) $ID)) {
@@ -83,6 +90,7 @@ class Alarm extends CommonDBTM
         $f    = $this->fields;
         $rows = [
             __('Alarm ID', 'opmanager')    => htmlescape($f['alarm_key']),
+            __('OpManager entity', 'opmanager') => htmlescape($f['entity_key']),
             __('Device', 'opmanager')      => htmlescape($f['display_name'] ?: $f['device_name']),
             __('IP address')               => htmlescape($f['ip_address']),
             __('Severity', 'opmanager')    => htmlescape($f['severity_label']),
