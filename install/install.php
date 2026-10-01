@@ -94,6 +94,29 @@ function plugin_opmanager_install()
         ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
     }
 
+    // Plan 3: notes/clears queued for OpManager, retried by the OutboxSend cron.
+    $table = 'glpi_plugin_opmanager_outbox';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `alarm_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `entity_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `tickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `users_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `action` VARCHAR(8) NOT NULL DEFAULT '',
+            `payload` TEXT NULL,
+            `state` VARCHAR(8) NOT NULL DEFAULT 'pending',
+            `attempts` INT UNSIGNED NOT NULL DEFAULT 0,
+            `next_try_at` TIMESTAMP NULL DEFAULT NULL,
+            `last_error` TEXT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `due` (`state`, `next_try_at`),
+            KEY `alarm_key` (`alarm_key`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
     Config::setDefaults();
 
     // setDefaults() never touches a stored value, so move an untouched old default
@@ -141,6 +164,11 @@ function plugin_opmanager_install()
         'mode'    => CronTask::MODE_EXTERNAL,
         'state'   => CronTask::STATE_WAITING,
         'comment' => 'OpManager alarm sync and tickets',
+    ]);
+    CronTask::register(Cron::class, 'OutboxSend', MINUTE_TIMESTAMP, [
+        'mode'    => CronTask::MODE_EXTERNAL,
+        'state'   => CronTask::STATE_WAITING,
+        'comment' => 'Send queued notes/clears to OpManager (retries)',
     ]);
 
     return true;
