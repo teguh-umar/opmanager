@@ -11,6 +11,7 @@ use GlpiPlugin\Opmanager\Ticketing\AlarmAssetResolver;
 use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
 use GlpiPlugin\Opmanager\Ticketing\DbDeviceIndex;
+use GlpiPlugin\Opmanager\Ticketing\DbSyncLock;
 use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
 use GlpiPlugin\Opmanager\Ticketing\RangeProductionCheck;
 
@@ -93,7 +94,16 @@ final class Cron extends \CommonGLPI
                 new RangeProductionCheck($ranges, [AddressingRanges::class, 'assetIps']),
                 $cfg
             );
-            $stats = $sync->run($now);
+            $lock = new DbSyncLock();
+            if (!$lock->acquire(60)) {
+                $task->log('another alarm sync (webhook) is running; skipped this run');
+                return 0;
+            }
+            try {
+                $stats = $sync->run($now);
+            } finally {
+                $lock->release();
+            }
         } catch (ClientException $e) {
             Config::set(['last_alarm_sync_error' => $e->getMessage()]);
             \Toolbox::logInFile('opmanager', 'AlarmSync: ' . $e->getMessage() . "\n");

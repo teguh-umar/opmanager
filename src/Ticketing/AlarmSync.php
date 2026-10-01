@@ -58,6 +58,21 @@ final class AlarmSync
         return $stats;
     }
 
+    /**
+     * One alarm, e.g. from the webhook (v0.3.0). Same engine and guard as run();
+     * the caller holds the SyncLock.
+     *
+     * @return array<string, int>
+     */
+    public function processOne(array $alarm, string $now): array
+    {
+        $this->errors = [];
+        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
+        $stats['fetched'] = 1;
+        $this->guarded($alarm, $now, $stats);
+        return $stats;
+    }
+
     /** @return list<string> "alarm <key>: <message>" for every alarm that failed in the last run */
     public function lastErrors(): array
     {

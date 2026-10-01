@@ -229,4 +229,11 @@ $stats = $sync->run($now);
 check('non-production critical alarm is stored only', $store->find('p1')['tickets_id'] === 0 && $stats['stored'] === 1);
 check('production critical alarm gets a ticket', $store->find('p2')['tickets_id'] === 100);
 
+// v0.3.0: the webhook processes one alarm through the same engine.
+[$sync, $src, $store, $gw] = $mk([]);
+$stats = $sync->processOne($al('w1', 1, 'dev-w'), $now);
+check('processOne creates the ticket', $stats['created'] === 1 && $store->find('w1')['tickets_id'] === 100);
+$stats = $sync->processOne($al('w1', 1, 'dev-w'), $now);
+check('lock serialises processing: second identical call is a no-op', $stats['created'] === 0 && $gw->log === ['create 100 w1']);
+
 done();
