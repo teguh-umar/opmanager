@@ -7,6 +7,7 @@ use GlpiPlugin\Opmanager\Matching\Matcher;
 use GlpiPlugin\Opmanager\OpManager\Client;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
 use GlpiPlugin\Opmanager\Outbound\DbOutboxStore;
+use GlpiPlugin\Opmanager\Outbound\Hooks;
 use GlpiPlugin\Opmanager\Outbound\Sender;
 use GlpiPlugin\Opmanager\Ticketing\AddressingRanges;
 use GlpiPlugin\Opmanager\Ticketing\AlarmAssetResolver;
@@ -142,7 +143,16 @@ final class Cron extends \CommonGLPI
         $cfg    = Config::ticketingConfig();
         $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1');
         $sender = new Sender(new DbOutboxStore(), $client, $cfg['outbound_max_attempts']);
-        $stats  = $sender->run($now, 200);
+        $lock   = new DbSyncLock(Hooks::OUTBOX_LOCK);
+        if (!$lock->acquire(0)) {
+            $task->log('a technician save is sending to OpManager; skipped this run');
+            return 0;
+        }
+        try {
+            $stats = $sender->run($now, 200);
+        } finally {
+            $lock->release();
+        }
         foreach ($sender->lastErrors() as $error) {
             $task->log('Outbound: ' . $error);
         }

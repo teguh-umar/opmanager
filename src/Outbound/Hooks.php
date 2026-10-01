@@ -6,6 +6,7 @@ use Glpi\RichText\RichText;
 use GlpiPlugin\Opmanager\Config;
 use GlpiPlugin\Opmanager\OpManager\Client;
 use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
+use GlpiPlugin\Opmanager\Ticketing\DbSyncLock;
 use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
 
 /**
@@ -17,6 +18,9 @@ final class Hooks
 {
     public const SEND_TIMEOUT = 5;
 
+    /** MySQL lock name shared by these hooks and the OutboxSend cron. */
+    public const OUTBOX_LOCK = 'opmanager_outbox';
+
     public static function followupAdded(\ITILFollowup $followup): void
     {
         try {
@@ -26,6 +30,9 @@ final class Hooks
             $cfg = Config::ticketingConfig();
             $uid = \Session::getLoginUserID();
             if (!Planner::isHuman($uid, \Session::isCron(), $cfg['service_user'], GlpiTicketGateway::isWriting())) {
+                return;
+            }
+            if (!Planner::isOriginalFollowup((int) ($followup->fields['users_id'] ?? 0), $cfg['service_user'], (int) ($followup->fields['sourceitems_id'] ?? 0))) {
                 return;
             }
             $tickets_id = (int) $followup->fields['items_id'];
@@ -96,12 +103,22 @@ final class Hooks
         foreach ($rows as $row) {
             $store->enqueue($row, $now);
         }
+        // One sender at a time (hook or cron), or a row could be sent twice (final review
+        // I-2). Busy = someone is sending right now; the cron picks these rows up.
+        $lock = new DbSyncLock(Hooks::OUTBOX_LOCK);
         try {
-            $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1', null, self::SEND_TIMEOUT);
-            $sender = new Sender($store, $client, $cfg['outbound_max_attempts']);
-            $sender->run($now, 20);
-            foreach ($sender->lastErrors() as $error) {
-                \Toolbox::logInFile('opmanager', 'Outbound: ' . $error . " (will retry)\n");
+            if (!$lock->acquire(0)) {
+                return;
+            }
+            try {
+                $client = new Client(Config::get('opm_url'), Config::apiKey(), Config::get('opm_verify_ssl') === '1', null, self::SEND_TIMEOUT);
+                $sender = new Sender($store, $client, $cfg['outbound_max_attempts']);
+                $sender->run($now, 20, true);
+                foreach ($sender->lastErrors() as $error) {
+                    \Toolbox::logInFile('opmanager', 'Outbound: ' . $error . " (will retry)\n");
+                }
+            } finally {
+                $lock->release();
             }
         } catch (\Throwable $e) {
             \Toolbox::logInFile('opmanager', 'Outbound send: ' . $e->getMessage() . " (queued for cron)\n");

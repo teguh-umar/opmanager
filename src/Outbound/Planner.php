@@ -21,6 +21,15 @@ final class Planner
     }
 
     /**
+     * A followup the technician wrote now: not one authored by the plugin's service user,
+     * and not one copied by Ticket::merge (sourceitems_id set) (final review I-4).
+     */
+    public static function isOriginalFollowup(int $author, int $service_user, int $source_id): bool
+    {
+        return $author !== $service_user && $source_id === 0;
+    }
+
+    /**
      * D25: public followups only.
      *
      * @param list<array{alarm_key: string, entity_key: string}> $active

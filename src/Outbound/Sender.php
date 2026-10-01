@@ -24,8 +24,13 @@ final class Sender
         return min(60, 2 ** max(0, $attempts - 1));
     }
 
-    /** @return array{sent: int, retried: int, failed: int} */
-    public function run(string $now, int $limit = 50): array
+    /**
+     * $stop_on_failure: the hooks send inside a technician's save, so one unreachable
+     * OpManager must cost one timeout, not one per row (final review I-3).
+     *
+     * @return array{sent: int, retried: int, failed: int}
+     */
+    public function run(string $now, int $limit = 50, bool $stop_on_failure = false): array
     {
         $this->errors = [];
         $stats   = ['sent' => 0, 'retried' => 0, 'failed' => 0];
@@ -58,6 +63,9 @@ final class Sender
                     $next = date('Y-m-d H:i:s', strtotime($now) + self::backoffMinutes($attempts) * 60);
                     $this->store->markRetry($row['id'], $attempts, $next, $e->getMessage(), $now);
                     $stats['retried']++;
+                }
+                if ($stop_on_failure) {
+                    break;
                 }
             } catch (\DomainException $e) {
                 $blocked[$key] = true;
