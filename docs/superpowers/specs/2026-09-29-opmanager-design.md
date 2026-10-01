@@ -64,6 +64,8 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D22 | Followup: perubahan severity langsung; perubahan pesan saja paling banyak satu followup per jam per alarm (final review, tidak dibantah user) | 2026-09-30 |
 | D23 | Filter alarm untuk tiket **baru** (mis. High CPU Utilization tidak jadi tiket): alarm cocok bila Event Type OpManager dicentang **atau** pesannya mengandung kata kunci (per baris, tidak peka huruf). Mode **Kecualikan** (default) atau **Hanya yang dipilih**. Daftar kosong = filter mati. Berlaku di atas D21; alarm terfilter tetap tersimpan dan tampil; alarm yang sudah punya tiket tidak terpengaruh (followup + solve tetap jalan) | 2026-10-01 |
 | D24 | Arah keluar (Plan 3) hanya untuk tindakan **yang diketik pengguna GLPI** (teknisi, admin, dst.): solusi atau followup dari sesi login GLPI. Yang dibuat plugin sendiri (service user, cron AlarmSync, webhook, Solve otomatis saat alarm Clear) dan aksi otomatis GLPI (auto-close, rules) **tidak** dikirim ke OpManager. Ini juga mencegah putaran balik OpManager → GLPI → OpManager | 2026-10-01 |
+| D25 | Hanya followup **publik** yang dikirim sebagai catatan ke OpManager; followup privat tetap internal GLPI | 2026-10-01 |
+| D26 | Tiket di-Close oleh pengguna tanpa solusi yang diketik → alarm tetap di-**clear**, dengan catatan singkat otomatis *"Tiket #N ditutup oleh <user> di GLPI"* (tanpa isi solusi) sebagai jejak | 2026-10-01 |
 
 ## 3. Arsitektur
 
@@ -234,8 +236,9 @@ dan hook tiket (§8) tidak mengantrekan apa pun.
 
 | Aksi teknisi di GLPI | Isi antrean |
 |---|---|
-| Menambah solusi / status tiket jadi Solved atau Closed | Untuk **setiap** alarm aktif di tiket: `note` (*"Tiket #N di-Solve/Close oleh <user>: <solusi>"*) lalu `clear` |
-| Menambah followup **publik** *(usulan: followup privat tidak dikirim)* | `note` ke setiap alarm aktif di tiket |
+| Menambah solusi (tiket jadi Solved) | Untuk **setiap** alarm aktif di tiket: `note` (*"Tiket #N di-Solve oleh <user>: <solusi>"*) lalu `clear` |
+| Status jadi Closed **tanpa** solusi yang diketik (D26) | Untuk setiap alarm aktif: `note` singkat (*"Tiket #N ditutup oleh <user> di GLPI"*) lalu `clear` |
+| Menambah followup **publik** (D25) | `note` ke setiap alarm aktif di tiket; followup privat tidak dikirim |
 
 **Hanya tindakan yang diketik pengguna GLPI (D24).** Sebuah solusi atau followup dikirim
 hanya jika semua syarat ini terpenuhi:
