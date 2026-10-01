@@ -13,6 +13,9 @@ final class SuiteConfig
     /** Hidden field marking a POST that came from the PGN Suite tab. */
     public const FROM_SUITE_FIELD = '_from_pgnsuite';
 
+    /** Session key holding a freshly generated webhook token until the form shows it once. */
+    public const NEW_TOKEN_KEY = 'plugin_opmanager_new_webhook_token';
+
     public static function section(): ?array
     {
         if (!\Session::haveRight(RightDefinition::CONFIG, READ)) {
@@ -91,6 +94,25 @@ final class SuiteConfig
         echo self::textRow('stale_warning_minutes' . $sfx, 'stale_warning_minutes', __('Warn when device data is older than (minutes)', 'opmanager'), Config::get('stale_warning_minutes'), 'number', $disabled);
         echo '</fieldset>';
 
+        global $CFG_GLPI;
+        $webhook_url = rtrim((string) ($CFG_GLPI['url_base'] ?? ''), '/') . Config::WEBHOOK_PATH;
+        echo '<fieldset class="mb-3"><legend class="fs-4">' . __s('Webhook from OpManager', 'opmanager') . '</legend>';
+        echo '<div>' . __s('OpManager > Notification Profile > Invoke a Webhook: POST, raw JSON', 'opmanager') . '</div>';
+        echo '<div class="mb-1">URL: <code>' . htmlescape($webhook_url) . '</code></div>';
+        echo '<div class="mb-1">' . __s('Header', 'opmanager') . ': <code>' . htmlescape(Config::WEBHOOK_HEADER) . '</code> = '
+            . (Config::get('webhook_token') !== '' ? __s('stored token (shown once when generated)', 'opmanager') : '<strong>' . __s('not set - webhook disabled', 'opmanager') . '</strong>') . '</div>';
+        echo '<div class="mb-1">' . __s('Body', 'opmanager') . ': <code>{"alarm_id":"$alarmid","entity":"$entity"}</code></div>';
+        $new_token = (string) ($_SESSION[self::NEW_TOKEN_KEY] ?? '');
+        unset($_SESSION[self::NEW_TOKEN_KEY]);
+        if ($new_token !== '') {
+            echo '<div class="alert alert-warning mt-2">' . __s('New webhook token - copy it into OpManager now, it is not shown again:', 'opmanager')
+                . '<input type="text" class="form-control font-monospace mt-1" readonly onclick="this.select()" value="' . htmlescape($new_token) . '"></div>';
+        }
+        if ($canedit) {
+            echo '<div class="mt-1">' . \Html::submit(__('Generate new token', 'opmanager'), ['name' => 'generate_webhook_token', 'class' => 'btn btn-outline-secondary']) . '</div>';
+        }
+        echo '</fieldset>';
+
         echo '<fieldset class="mb-3"><legend class="fs-4">' . __s('Tickets from alarms', 'opmanager') . '</legend>';
         echo '<div>' . __s('Create a ticket for these OpManager severities', 'opmanager') . '</div>';
         $sev_selected = json_decode(Config::get('ticket_severities'), true) ?: [];
@@ -126,6 +148,7 @@ final class SuiteConfig
         } elseif (array_intersect($prod_selected, array_keys($prod_options)) === []) {
             echo '<div class="alert alert-warning">' . __s('No production range selected: alarms are stored but no ticket is created.', 'opmanager') . '</div>';
         }
+        self::showAlarmFilter($sfx, $disabled);
         echo '<div class="mt-2"><label class="form-label">' . __s('Ticket template', 'opmanager') . '</label>';
         \TicketTemplate::dropdown([
             'name'                => 'ticket_template',
@@ -170,6 +193,41 @@ final class SuiteConfig
             echo '<div class="mt-2">' . \Html::submit(_sx('button', 'Save'), ['name' => 'update']) . '</div>';
         }
         \Html::closeForm();
+    }
+
+    /** Alarm filter (v0.3.0): event types seen so far plus saved ones, and message keywords. */
+    private static function showAlarmFilter(string $sfx, string $disabled): void
+    {
+        $filter = Config::filterSettings(Config::get('ticket_filter_mode'), Config::get('ticket_filter_event_types'), Config::get('ticket_filter_keywords'));
+        echo '<div class="mt-3"><label class="form-label" for="opm-filter-mode' . $sfx . '">' . __s('Alarm filter (new tickets only)', 'opmanager') . '</label>';
+        echo '<select class="form-select" id="opm-filter-mode' . $sfx . '" name="ticket_filter_mode"' . $disabled . '>';
+        $labels = [
+            'exclude' => __('Exclude: matching alarms get no ticket', 'opmanager'),
+            'include' => __('Only: only matching alarms get a ticket', 'opmanager'),
+        ];
+        foreach (Config::FILTER_MODES as $mode) {
+            echo '<option value="' . htmlescape($mode) . '"' . ($filter['filter_mode'] === $mode ? ' selected' : '') . '>' . htmlescape($labels[$mode]) . '</option>';
+        }
+        echo '</select></div>';
+
+        echo '<div class="mt-1">' . __s('OpManager event types', 'opmanager') . '</div>';
+        $types = array_values(array_unique(array_merge(\GlpiPlugin\Opmanager\Ticketing\AlarmFilter::knownEventTypes(), $filter['filter_event_types'])));
+        sort($types);
+        foreach ($types as $i => $type) {
+            $id = 'opm-evt-' . $i . $sfx;
+            echo '<div class="form-check form-check-inline"><input class="form-check-input" type="checkbox" name="ticket_filter_event_types[]" value="' . htmlescape($type) . '" id="' . htmlescape($id) . '"'
+                . (in_array($type, $filter['filter_event_types'], true) ? ' checked' : '') . $disabled . '>'
+                . '<label class="form-check-label" for="' . htmlescape($id) . '">' . htmlescape($type) . '</label></div>';
+        }
+        if ($types === []) {
+            echo '<div class="form-hint">' . __s('No alarm received yet; event types appear here after the first alarm sync.', 'opmanager') . '</div>';
+        }
+        echo '<div class="mt-1"><label class="form-label" for="opm-filter-kw' . $sfx . '">' . __s('Message keywords (one per line, not case sensitive)', 'opmanager') . '</label>'
+            . '<textarea class="form-control" rows="3" id="opm-filter-kw' . $sfx . '" name="ticket_filter_keywords"' . $disabled . '>' . htmlescape(implode("\n", $filter['filter_keywords'])) . '</textarea>'
+            . '<div class="form-hint">' . __s('An alarm matches when its event type is ticked or its message contains a keyword. Alarms that already have a ticket are not affected.', 'opmanager') . '</div></div>';
+        if ($filter['filter_event_types'] === [] && $filter['filter_keywords'] === []) {
+            echo '<div class="alert alert-info mt-1">' . __s('Alarm filter is off: every alarm that passes the severity and production rules gets a ticket.', 'opmanager') . '</div>';
+        }
     }
 
     private static function textRow(string $id, string $name, string $label, string $value, string $type, string $disabled): string

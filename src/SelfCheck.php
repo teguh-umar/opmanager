@@ -54,6 +54,19 @@ final class SelfCheck
                 $ids = Config::ticketingConfig()['production_addressings'];
                 self::assert(\GlpiPlugin\Opmanager\Ticketing\AddressingRanges::load($ids) !== [], 'Setup > OpManager: select at least one valid production IP range, otherwise no ticket is created');
             },
+            'webhook/stateless' => static function (): void {
+                $request = \Symfony\Component\HttpFoundation\Request::create(Config::WEBHOOK_PATH, 'POST');
+                self::assert((new \Glpi\Http\SessionManager())->isResourceStateless($request), 'front/webhook.php is not registered as stateless (plugin_opmanager_boot)');
+            },
+            'webhook/token' => static function (): void {
+                self::assert(Config::webhookToken() !== '', 'Setup > OpManager: generate a webhook token (webhook disabled until then)');
+                self::assert(Config::get('webhook_token') !== Config::webhookToken(), 'webhook_token is stored in clear text');
+            },
+            'webhook/lock' => static function (): void {
+                $lock = new \GlpiPlugin\Opmanager\Ticketing\DbSyncLock();
+                self::assert($lock->acquire(1), 'GET_LOCK opmanager_alarm_sync not obtainable');
+                $lock->release();
+            },
             'tickets/template-resolves' => static function (): void {
                 $cfg = Config::ticketingConfig();
                 if ($cfg['template_id'] > 0) {
