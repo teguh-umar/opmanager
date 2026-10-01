@@ -18,6 +18,17 @@ sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username
 - [ ] `sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
       (including `webhook/stateless`, `webhook/token`, `webhook/lock`).
 
+## 1b. Alarm filter
+
+- [ ] Setup > Tickets from alarms > **Alarm filter**: leave mode on "Exclude". Tick the event types
+      that must not open tickets (for example `CPU Utilization`). The list shows the event types
+      already received from OpManager. Add message keywords for custom alarms, one per line.
+      Save.
+- [ ] Optional: to see which event types occur, run
+      `SELECT event_type, COUNT(*) FROM glpi_plugin_opmanager_alarms GROUP BY event_type ORDER BY 2 DESC;`
+- [ ] At the next CPU alarm on a production IP, it appears in the plugin's Alarms list
+      **without** a ticket. Other Critical alarms still get tickets.
+
 ## 2. Endpoint checks from the VM
 
 ```bash
