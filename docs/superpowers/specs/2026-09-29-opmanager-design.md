@@ -385,9 +385,14 @@ token tidak pernah ditampilkan ulang utuh.
 - **`addNotes` terverifikasi di produksi (probe 2026-10-01): wajib POST** (form params `entity`,
   `notes`, key di header). GET dijawab `{"error":{"message":"Invalid request method.",
   "errorcode":"INVALID_METHOD"}}`. Dengan key yang dipakai sekarang, POST dijawab
-  `AUTHORIZATION_FAILED` ("You are not authorized to perform this operation"): user pemilik
-  key **hanya boleh membaca**. **Plan 3 membutuhkan API key dari user OpManager dengan hak
-  mengubah alarm** (Operator/Admin, sebaiknya user khusus integrasi).
+  `AUTHORIZATION_FAILED` ("You are not authorized to perform this operation").
+  **Diperbarui 2026-10-01 (probe 2, curl): POST yang sama berhasil** —
+  `{"result":{"message":"Successfully Added"}}` — dengan key yang terpasang di GLPI (user
+  menyatakan milik admin dengan akses penuh). Cara kirim yang dipakai Plan 3: **POST, key di
+  header `apiKey`, `entity` + `notes` sebagai form body**. Penolakan pertama kemungkinan karena
+  key/hak saat itu berbeda; jika muncul lagi, cek dulu pemilik key di OpManager.
+  Entity contoh: `IF-192.0.2.245.10000000001-10000014510_Poll` (alarm interface), jadi
+  entity bisa berisi titik dan garis bawah.
 - Objek error OpManager punya dua bentuk: `{"code","message"}` (key salah) dan
   `{"message","errorcode"}` (hak/method). Plugin membaca keduanya.
 - **Belum terverifikasi:** method `clearAlarm` (kemungkinan POST, seperti `addNotes`).
