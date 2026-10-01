@@ -9,6 +9,12 @@
   - the 10-minute poll stays as the safety net.
 - The token is generated in Setup, stored encrypted, and shown once.
 - Cron and webhook share a MySQL lock, so one alarm is never ticketed twice.
+- Alarm filter for new tickets (Setup > Tickets from alarms): tick OpManager event types
+  and/or list message keywords; mode Exclude (e.g. no ticket for CPU Utilization) or Only.
+  Filtered alarms are still stored and shown; alarms that already have a ticket are unaffected.
+- The webhook creates tickets with the same rights and entities as the cron, re-reads the
+  alarm only after taking the lock, shows a new token once in the Setup form, and logs
+  every non-200 answer.
 - Fix: ticket patterns saved from the Setup textarea (CRLF) are normalised, and the
   0.2.1 description upgrade now also recognises them.
 
