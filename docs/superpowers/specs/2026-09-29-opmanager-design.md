@@ -409,4 +409,7 @@ token tidak pernah ditampilkan ulang utuh.
   entity bisa berisi titik dan garis bawah.
 - Objek error OpManager punya dua bentuk: `{"code","message"}` (key salah) dan
   `{"message","errorcode"}` (hak/method). Plugin membaca keduanya.
-- **Belum terverifikasi:** method `clearAlarm` (kemungkinan POST, seperti `addNotes`).
+- **`clearAlarm` terverifikasi di produksi (probe 2026-10-01):** POST, key di header `apiKey`,
+  form body `entity`. Jawaban sukses **berbeda bentuk** dari `addNotes`:
+  `{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{...}}`. Karena itu plugin
+  menganggap gagal hanya jika ada objek `error`, bukan dengan mencari `result`.
