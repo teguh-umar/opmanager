@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- The default ticket description now carries `Category: {category}` (OpManager's device
+  category: Server, Switch, Firewall, Storage, Wireless, ...), so GLPI's own
+  **Business rules for tickets** can map it to an ITIL category. A category is needed
+  before a ticket can be Solved/Closed when the Behaviors plugin requires one.
+- Upgrade: an installation still using the 0.2.0 default description is moved to the new
+  one; a customised description is left untouched (add `Category: {category}` yourself).
+
 ## 0.2.0
 
 - Alarm polling: CLI cron `AlarmSync` (every 10 min) pulls OpManager's active alarms
