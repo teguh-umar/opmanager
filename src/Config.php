@@ -14,7 +14,11 @@ final class Config
     public const MATCH_MODES = ['ip_only', 'name_only', 'hybrid', 'hybrid_name', 'manual'];
 
     /** Encrypted at rest by core via $PLUGIN_HOOKS['secured_configs'] (GLPIKey::getConfigs). */
-    public const SECURED = ['opm_api_key'];
+    public const SECURED = ['opm_api_key', 'webhook_token'];
+
+    public const WEBHOOK_HEADER = 'X-OPM-Token';
+
+    public const WEBHOOK_PATH = '/plugins/opmanager/front/webhook.php';
 
     public const BASE_ASSET_ITEMTYPES = ['Computer', 'NetworkEquipment'];
 
@@ -48,6 +52,7 @@ final class Config
     public const DEFAULTS = [
         'opm_url'                => '',
         'opm_api_key'            => '',
+        'webhook_token'          => '',
         'opm_verify_ssl'         => '1',
         'match_mode'             => 'hybrid_name',
         'asset_itemtypes'        => '["Computer","NetworkEquipment"]',
@@ -86,6 +91,18 @@ final class Config
     {
         $raw = self::get('opm_api_key');
         return $raw === '' ? '' : (string) ((new \GLPIKey())->decrypt($raw) ?? '');
+    }
+
+    /** Decrypted webhook token; '' = webhook disabled. */
+    public static function webhookToken(): string
+    {
+        $raw = self::get('webhook_token');
+        return $raw === '' ? '' : (string) ((new \GLPIKey())->decrypt($raw) ?? '');
+    }
+
+    public static function newWebhookToken(): string
+    {
+        return bin2hex(random_bytes(24));
     }
 
     public static function setDefaults(): void
