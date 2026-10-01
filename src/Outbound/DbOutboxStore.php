@@ -25,7 +25,9 @@ final class DbOutboxStore implements OutboxStore
 
         return count($DB->request([
             'FROM'  => self::TABLE,
-            'WHERE' => ['alarm_key' => $alarm_key, 'action' => 'clear', 'state' => ['pending', 'sent']],
+            // Only a waiting clear blocks a new one: after a sent clear the same alarmId can
+            // come back (AlarmSync REOPEN) and must be clearable again (final review I-1).
+            'WHERE' => ['alarm_key' => $alarm_key, 'action' => 'clear', 'state' => 'pending'],
             'LIMIT' => 1,
         ])) > 0;
     }
