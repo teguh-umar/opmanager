@@ -62,6 +62,10 @@ function plugin_init_opmanager()
     // Core encrypts these on write (GLPIKey::getConfigs maps them to plugin:opmanager).
     $PLUGIN_HOOKS['secured_configs']['opmanager'] = \GlpiPlugin\Opmanager\Config::SECURED;
 
+    // GLPI -> OpManager (Plan 3): human actions only, decided in Outbound\Planner (D24).
+    $PLUGIN_HOOKS['item_add']['opmanager'] = [\ITILFollowup::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'followupAdded']];
+    $PLUGIN_HOOKS['item_update']['opmanager'] = [\Ticket::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'ticketUpdated']];
+
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
     // Array-of-classes value is mandatory for a NEW sector (hub §4).
