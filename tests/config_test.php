@@ -75,7 +75,7 @@ check('alarm sync faster than device sync', Config::ALARM_SYNC_MINUTES < Config:
 
 $t = ['ticket_severities' => ['1', '2', '9'], 'ticket_template' => '3', 'ticket_title_pattern' => ' [OPM-{alarm_key}] {message} ',
       'ticket_content_pattern' => '{message}', 'service_user' => '42', 'ticket_entity_default' => '0',
-      'ticket_use_ipnetwork_entity' => '1', 'relink_window_hours' => '24', 'storm_threshold' => '10', 'storm_window_minutes' => '5'];
+      'ticket_use_ipnetwork_entity' => '1', 'relink_window_hours' => '24', 'storm_threshold' => '10', 'storm_window_minutes' => '5', 'outbound_max_attempts' => '10'];
 $r = Config::sanitizeTicketing($t);
 check('ticketing form valid', $r['errors'] === [], implode('; ', $r['errors']));
 check('unknown severity dropped', json_decode($r['values']['ticket_severities'], true) === [1, 2]);
@@ -138,6 +138,13 @@ $a = Config::newWebhookToken();
 $b = Config::newWebhookToken();
 check('new token differs and is 48 hex', $a !== $b && preg_match('/^[0-9a-f]{48}$/', $a) === 1);
 check('webhook header and path constants', Config::WEBHOOK_HEADER === 'X-OPM-Token' && Config::WEBHOOK_PATH === '/plugins/opmanager/front/webhook.php');
+
+// Plan 3: outbound retries (D13)
+check('outbound retries default 10', Config::DEFAULTS['outbound_max_attempts'] === '10');
+$r = Config::sanitizeTicketing(['outbound_max_attempts' => '0'] + $t);
+check('outbound retries 0 rejected', !array_key_exists('outbound_max_attempts', $r['values']) && count($r['errors']) === 1);
+$r = Config::sanitizeTicketing(['outbound_max_attempts' => '7'] + $t);
+check('outbound retries stored', $r['values']['outbound_max_attempts'] === '7');
 
 done();
 

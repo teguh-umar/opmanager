@@ -7,7 +7,7 @@
  * @license GPL-3.0-or-later
  */
 
-define('PLUGIN_OPMANAGER_VERSION', '0.3.0');
+define('PLUGIN_OPMANAGER_VERSION', '0.4.0');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
@@ -61,6 +61,10 @@ function plugin_init_opmanager()
 
     // Core encrypts these on write (GLPIKey::getConfigs maps them to plugin:opmanager).
     $PLUGIN_HOOKS['secured_configs']['opmanager'] = \GlpiPlugin\Opmanager\Config::SECURED;
+
+    // GLPI -> OpManager (Plan 3): human actions only, decided in Outbound\Planner (D24).
+    $PLUGIN_HOOKS['item_add']['opmanager'] = [\ITILFollowup::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'followupAdded']];
+    $PLUGIN_HOOKS['item_update']['opmanager'] = [\Ticket::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'ticketUpdated']];
 
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
