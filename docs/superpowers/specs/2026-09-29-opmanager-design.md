@@ -63,6 +63,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D21 | Tiket hanya untuk severity yang dicentang (default Critical) **pada aset produksi**. Aset produksi = IP alarm atau salah satu IP aset GLPI pasangannya berada di rentang **IP Addressing** (plugin addressing) yang dicentang di Setup. Tanpa rentang yang dicentang, tidak ada tiket. Middleware webhook lama dimatikan saat plugin aktif | 2026-09-30 |
 | D22 | Followup: perubahan severity langsung; perubahan pesan saja paling banyak satu followup per jam per alarm (final review, tidak dibantah user) | 2026-09-30 |
 | D23 | Filter alarm untuk tiket **baru** (mis. High CPU Utilization tidak jadi tiket): alarm cocok bila Event Type OpManager dicentang **atau** pesannya mengandung kata kunci (per baris, tidak peka huruf). Mode **Kecualikan** (default) atau **Hanya yang dipilih**. Daftar kosong = filter mati. Berlaku di atas D21; alarm terfilter tetap tersimpan dan tampil; alarm yang sudah punya tiket tidak terpengaruh (followup + solve tetap jalan) | 2026-10-01 |
+| D24 | Arah keluar (Plan 3) hanya untuk tindakan **yang diketik pengguna GLPI** (teknisi, admin, dst.): solusi atau followup dari sesi login GLPI. Yang dibuat plugin sendiri (service user, cron AlarmSync, webhook, Solve otomatis saat alarm Clear) dan aksi otomatis GLPI (auto-close, rules) **tidak** dikirim ke OpManager. Ini juga mencegah putaran balik OpManager → GLPI → OpManager | 2026-10-01 |
 
 ## 3. Arsitektur
 
@@ -235,6 +236,16 @@ dan hook tiket (§8) tidak mengantrekan apa pun.
 |---|---|
 | Menambah solusi / status tiket jadi Solved atau Closed | Untuk **setiap** alarm aktif di tiket: `note` (*"Tiket #N di-Solve/Close oleh <user>: <solusi>"*) lalu `clear` |
 | Menambah followup **publik** *(usulan: followup privat tidak dikirim)* | `note` ke setiap alarm aktif di tiket |
+
+**Hanya tindakan yang diketik pengguna GLPI (D24).** Sebuah solusi atau followup dikirim
+hanya jika semua syarat ini terpenuhi:
+- dibuat dalam sesi login GLPI: `Session::getLoginUserID()` > 0, dan bukan `Session::isCron()`;
+- penulisnya bukan service user plugin;
+- tidak dibuat saat plugin sendiri sedang menulis. Gateway memasang penanda selama
+  `create/followup/solve/reopen`, dan hook mengabaikan item yang dibuat selama penanda aktif.
+
+Dengan aturan ini, Solve otomatis saat alarm Clear (D6), followup dari AlarmSync atau webhook,
+dan auto-close GLPI tidak pernah dikirim balik ke OpManager.
 
 Antrean dikirim langsung setelah aksi; yang gagal dicoba ulang oleh `QueueRetry` dengan
 jeda bertambah (1, 2, 4, 8 … menit, maks 60) sampai batas percobaan (Setup, default 10),
