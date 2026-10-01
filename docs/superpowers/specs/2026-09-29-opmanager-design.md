@@ -381,4 +381,12 @@ token tidak pernah ditampilkan ulang utuh.
   `/Ticket`, dan `users_id_assign` bukan field tiket (seharusnya `_users_id_assign`).
   Action ini harus **dinonaktifkan saat v0.2.0 aktif**, supaya satu alarm tidak menjadi dua
   tiket. Pada v0.3.0 action ini diarahkan ulang ke penerima webhook plugin.
-- **Belum terverifikasi:** method HTTP addNotes/clearAlarm (GET atau POST).
+- **`addNotes` terverifikasi di produksi (probe 2026-10-01): wajib POST** (form params `entity`,
+  `notes`, key di header). GET dijawab `{"error":{"message":"Invalid request method.",
+  "errorcode":"INVALID_METHOD"}}`. Dengan key yang dipakai sekarang, POST dijawab
+  `AUTHORIZATION_FAILED` ("You are not authorized to perform this operation"): user pemilik
+  key **hanya boleh membaca**. **Plan 3 membutuhkan API key dari user OpManager dengan hak
+  mengubah alarm** (Operator/Admin, sebaiknya user khusus integrasi).
+- Objek error OpManager punya dua bentuk: `{"code","message"}` (key salah) dan
+  `{"message","errorcode"}` (hak/method). Plugin membaca keduanya.
+- **Belum terverifikasi:** method `clearAlarm` (kemungkinan POST, seperti `addNotes`).
