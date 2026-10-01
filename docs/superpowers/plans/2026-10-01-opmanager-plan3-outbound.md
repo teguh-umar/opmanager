@@ -59,6 +59,11 @@ check('addNote posts entity and notes', $posted[0][0] === 'https://opm/api/json/
 check('addNote key only in header', ($posted[0][2]['apiKey'] ?? null) === 'S3CRET' && $posted[0][1] === [] && !isset($posted[0][3]['apiKey']));
 $writer->clearAlarm('IF-1.2_Poll');
 check('clearAlarm posts entity', $posted[1][0] === 'https://opm/api/json/alarm/clearAlarm' && $posted[1][3] === ['entity' => 'IF-1.2_Poll']);
+// Real clearAlarm success shape (production probe 2026-10-01): no "result", no "error".
+$cleared = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{"Details":{"displayName":"VM-APP-02"}}}']);
+$ok = true;
+try { $cleared->clearAlarm('E'); } catch (ClientException $e) { $ok = false; }
+check('clearAlarm ackMessage answer is success', $ok);
 $denied = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"error":{"message":"You are not authorized to perform this operation","errorcode":"AUTHORIZATION_FAILED"}}']);
 try {
     $denied->addNote('E', 'x');
@@ -1055,7 +1060,7 @@ In `setup.php`, set `define('PLUGIN_OPMANAGER_VERSION', '0.4.0');`. Add a `## 0.
 
 `docs/runbook-v0.4.0.md`: frontmatter (`date: 2026-10-01`, `tags: [opmanager, runbook]`, `status: active`) and these sections:
 - **Install:** same commands as runbook v0.3.0 §1 with the 0.4.0 zip, then selfcheck `ALL PASS`, including `outbound/table` and `outbound/cron`.
-- **Verify clearAlarm:** use one safe test alarm. If clearAlarm is refused, report the error from Setup ("Last OpManager write error").
+- **clearAlarm:** verified on production 2026-10-01 (POST, `ackMessage` answer). If it is refused later, report the error from Setup ("Last OpManager write error").
 - **Real flow:** on an alarm ticket, check each of these:
   - a public followup → the note appears on the alarm in OpManager within a minute;
   - a private followup → nothing appears;
