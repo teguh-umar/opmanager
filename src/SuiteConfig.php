@@ -91,6 +91,19 @@ final class SuiteConfig
         echo self::textRow('stale_warning_minutes' . $sfx, 'stale_warning_minutes', __('Warn when device data is older than (minutes)', 'opmanager'), Config::get('stale_warning_minutes'), 'number', $disabled);
         echo '</fieldset>';
 
+        global $CFG_GLPI;
+        $webhook_url = rtrim((string) ($CFG_GLPI['url_base'] ?? ''), '/') . Config::WEBHOOK_PATH;
+        echo '<fieldset class="mb-3"><legend class="fs-4">' . __s('Webhook from OpManager', 'opmanager') . '</legend>';
+        echo '<div>' . __s('OpManager > Notification Profile > Invoke a Webhook: POST, raw JSON', 'opmanager') . '</div>';
+        echo '<div class="mb-1">URL: <code>' . htmlescape($webhook_url) . '</code></div>';
+        echo '<div class="mb-1">' . __s('Header', 'opmanager') . ': <code>' . htmlescape(Config::WEBHOOK_HEADER) . '</code> = '
+            . (Config::get('webhook_token') !== '' ? __s('stored token (shown once when generated)', 'opmanager') : '<strong>' . __s('not set - webhook disabled', 'opmanager') . '</strong>') . '</div>';
+        echo '<div class="mb-1">' . __s('Body', 'opmanager') . ': <code>{"alarm_id":"$alarmid","entity":"$entity"}</code></div>';
+        if ($canedit) {
+            echo '<div class="mt-1">' . \Html::submit(__('Generate new token', 'opmanager'), ['name' => 'generate_webhook_token', 'class' => 'btn btn-outline-secondary']) . '</div>';
+        }
+        echo '</fieldset>';
+
         echo '<fieldset class="mb-3"><legend class="fs-4">' . __s('Tickets from alarms', 'opmanager') . '</legend>';
         echo '<div>' . __s('Create a ticket for these OpManager severities', 'opmanager') . '</div>';
         $sev_selected = json_decode(Config::get('ticket_severities'), true) ?: [];

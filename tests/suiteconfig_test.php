@@ -5,6 +5,7 @@ namespace {
 
     $GLOBALS['RIGHTS'] = [];
     $GLOBALS['CFG_VALUES'] = [];
+    $GLOBALS['CFG_GLPI'] = ['url_base' => 'https://glpi.example.com'];
 
     class CommonGLPI {}
     class Session
@@ -95,6 +96,15 @@ namespace {
     }
 
     check('warning when no IP Addressing range is available', str_contains($html, 'No ticket will be created'));
+
+    check('webhook URL shown', str_contains($html, 'https://glpi.example.com/plugins/opmanager/front/webhook.php'));
+    check('webhook header name shown', str_contains($html, 'X-OPM-Token'));
+    check('generate token button shown to editors', str_contains($html, "name='generate_webhook_token'"));
+    $GLOBALS['CFG_VALUES']['webhook_token'] = 'ENCRYPTED-WEBHOOK-TOKEN';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('token never rendered in setup', !str_contains($html, 'ENCRYPTED-WEBHOOK-TOKEN'));
 
     done();
 }
