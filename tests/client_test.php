@@ -1,7 +1,7 @@
 <?php
 
 require __DIR__ . '/bootstrap.php';
-foreach (['ClientException', 'ResponseGuard', 'DeviceSource', 'AlarmSource', 'DeviceParser', 'AlarmParser', 'Client'] as $f) {
+foreach (['ClientException', 'ResponseGuard', 'DeviceSource', 'AlarmSource', 'DeviceParser', 'AlarmParser', 'AlarmWriter', 'Client'] as $f) {
     require OPM_ROOT . "/src/OpManager/{$f}.php";
 }
 
@@ -97,5 +97,30 @@ check('alarm by entity filters on entity', $calls[1][1] === ['entity' => 'E2'] &
 check('alarm by entity returns null when absent', $client->alarmByEntity('E9') === null);
 
 check('unconfigured client refuses', $threw(fn () => (new Client('', '', true, $transport))->listDevices()));
+
+// Plan 3: writes are POST with a form body; the key stays in the header.
+$posted = [];
+$writer = new Client('https://opm', 'S3CRET', true, function (string $url, array $query, array $headers, ?array $form = null) use (&$posted) {
+    $posted[] = [$url, $query, $headers, $form];
+    return ['status' => 200, 'body' => '{"result":{"message":"Successfully Added"}}'];
+});
+$writer->addNote('IF-1.2_Poll', 'hello');
+check('addNote posts entity and notes', $posted[0][0] === 'https://opm/api/json/alarm/addNotes' && $posted[0][3] === ['entity' => 'IF-1.2_Poll', 'notes' => 'hello']);
+check('addNote key only in header', ($posted[0][2]['apiKey'] ?? null) === 'S3CRET' && $posted[0][1] === [] && !isset($posted[0][3]['apiKey']));
+$writer->clearAlarm('IF-1.2_Poll');
+check('clearAlarm posts entity', $posted[1][0] === 'https://opm/api/json/alarm/clearAlarm' && $posted[1][3] === ['entity' => 'IF-1.2_Poll']);
+// Real clearAlarm success shape (production probe 2026-10-01): no "result", no "error".
+$cleared = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{"Details":{"displayName":"VM-APP-02"}}}']);
+$ok = true;
+try { $cleared->clearAlarm('E'); } catch (ClientException $e) { $ok = false; }
+check('clearAlarm ackMessage answer is success', $ok);
+$denied = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"error":{"message":"You are not authorized to perform this operation","errorcode":"AUTHORIZATION_FAILED"}}']);
+try {
+    $denied->addNote('E', 'x');
+    check('write error object throws', false);
+} catch (ClientException $e) {
+    check('write error object throws', str_contains($e->getMessage(), 'AUTHORIZATION_FAILED'));
+}
+check('client is an AlarmWriter', $writer instanceof \GlpiPlugin\Opmanager\OpManager\AlarmWriter);
 
 done();
