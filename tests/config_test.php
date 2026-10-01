@@ -114,5 +114,12 @@ $r = Config::sanitizeTicketing(['ticket_content_pattern' => "Line 1\r\nLine 2\rL
 check('patterns stored with \n only', $r['values']['ticket_content_pattern'] === "Line 1\nLine 2\nLine 3");
 check('normaliseLines helper', Config::normaliseLines("a\r\nb\rc\n") === "a\nb\nc\n");
 
+// v0.3.0 webhook token
+check('webhook token is secured', in_array('webhook_token', Config::SECURED, true) && (Config::DEFAULTS['webhook_token'] ?? null) === '');
+$a = Config::newWebhookToken();
+$b = Config::newWebhookToken();
+check('new token differs and is 48 hex', $a !== $b && preg_match('/^[0-9a-f]{48}$/', $a) === 1);
+check('webhook header and path constants', Config::WEBHOOK_HEADER === 'X-OPM-Token' && Config::WEBHOOK_PATH === '/plugins/opmanager/front/webhook.php');
+
 done();
 
