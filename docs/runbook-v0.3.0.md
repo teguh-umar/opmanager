@@ -14,7 +14,7 @@ sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username
 ```
 
 - [ ] Setup > PGN Suite > OpManager > "Webhook from OpManager": click **Generate new token**,
-      and copy the token from the message (it is shown once).
+      and copy the token from the yellow box under the Webhook fields (it is shown once).
 - [ ] `sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
       (including `webhook/stateless`, `webhook/token`, `webhook/lock`).
 
@@ -42,7 +42,8 @@ unset TOKEN
 - [ ] Use it in a Notification Profile for **Critical and Clear** on the devices that matter.
       The plugin still filters on the production ranges.
 - [ ] Re-enable the profile. Use "Test" in OpManager, or wait for a real alarm; the plugin log shows
-      no `Webhook: HTTP 4xx` lines.
+      no `Webhook: HTTP 4xx` lines. `Webhook: HTTP 202 ... alarm not current` on every call means
+      OpManager's `$alarmid`/`$entity` differ from the API values: report it.
 
 ## 4. Real event
 

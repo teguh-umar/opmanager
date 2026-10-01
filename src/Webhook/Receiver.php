@@ -51,22 +51,23 @@ final class Receiver
             return self::reply(400, 'alarm_id and entity are required');
         }
 
-        try {
-            $alarm = $this->source->alarmByEntity($entity);
-        } catch (ClientException $e) {
-            return self::reply(202, 'OpManager API unavailable; deferred to AlarmSync cron');
-        }
-        if ($alarm === null || (string) ($alarm['alarm_key'] ?? '') !== $alarm_id) {
-            return self::reply(202, 'alarm not current on this entity; deferred to AlarmSync cron');
-        }
-
+        // Fetch under the lock: a snapshot read before waiting could be older than one
+        // another request processes meanwhile (flapping alarm -> spurious reopen).
         if (!$this->lock->acquire(self::LOCK_WAIT_SECONDS)) {
-            return self::reply(202, 'alarm sync busy; deferred to AlarmSync cron');
+            return self::reply(202, 'alarm sync busy; deferred to AlarmSync cron', $alarm_id);
         }
         try {
+            try {
+                $alarm = $this->source->alarmByEntity($entity);
+            } catch (ClientException $e) {
+                return self::reply(202, 'OpManager API unavailable; deferred to AlarmSync cron', $alarm_id);
+            }
+            if ($alarm === null || (string) ($alarm['alarm_key'] ?? '') !== $alarm_id) {
+                return self::reply(202, 'alarm not current on this entity; deferred to AlarmSync cron', $alarm_id);
+            }
             $stats = ($this->runner)($alarm);
         } catch (\Throwable $e) {
-            return self::reply(500, 'processing failed');
+            return self::reply(500, 'processing failed', $alarm_id);
         } finally {
             $this->lock->release();
         }
@@ -75,8 +76,12 @@ final class Receiver
     }
 
     /** @return array{status: int, body: array<string, mixed>} */
-    private static function reply(int $status, string $message): array
+    private static function reply(int $status, string $message, string $alarm_id = ''): array
     {
-        return ['status' => $status, 'body' => ['status' => $status < 300 ? 'deferred' : 'error', 'message' => $message]];
+        $body = ['status' => $status < 300 ? 'deferred' : 'error', 'message' => $message];
+        if ($alarm_id !== '') {
+            $body['alarm_id'] = $alarm_id;
+        }
+        return ['status' => $status, 'body' => $body];
     }
 }

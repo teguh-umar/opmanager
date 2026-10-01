@@ -106,5 +106,16 @@ namespace {
     $html = (string) ob_get_clean();
     check('token never rendered in setup', !str_contains($html, 'ENCRYPTED-WEBHOOK-TOKEN'));
 
+    $_SESSION[SuiteConfig::NEW_TOKEN_KEY] = 'abc123newtoken';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('new token shown inline in a copyable field', str_contains($html, "value='abc123newtoken'") || str_contains($html, 'value="abc123newtoken"'));
+    check('new token is consumed after one display', !isset($_SESSION[SuiteConfig::NEW_TOKEN_KEY]));
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('new token not shown a second time', !str_contains($html, 'abc123newtoken'));
+
     done();
 }
