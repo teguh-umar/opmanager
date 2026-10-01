@@ -18,7 +18,9 @@ final class AlarmSync
     /** @var list<string> */
     private array $errors = [];
 
-    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int} $cfg */
+    private AlarmFilter $filter;
+
+    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, filter_mode?: string, filter_event_types?: list<string>, filter_keywords?: list<string>} $cfg */
     public function __construct(
         private AlarmSource $source,
         private AlarmStore $store,
@@ -27,6 +29,7 @@ final class AlarmSync
         private ProductionCheck $production,
         private array $cfg,
     ) {
+        $this->filter = AlarmFilter::fromConfig($cfg);
     }
 
     /** @return array<string, int> */
@@ -116,10 +119,11 @@ final class AlarmSync
         $fresh = (string) $alarm['mod_time'] === '' || (string) $alarm['mod_time'] >= $window;
 
         // Tickets only for the configured severities on production assets
-        // (user decision 2026-09-30); everything else is stored and shown only.
+        // (user decision 2026-09-30), minus the alarm filter (2026-10-01) for new tickets;
+        // everything else is stored and shown only.
         $asset      = $this->assets->resolve($alarm);
         $ticketable = in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true)
-            && ($has_ticket || $is_clear || $this->production->isProduction($alarm, $asset));
+            && ($has_ticket || $is_clear || ($this->filter->allows($alarm) && $this->production->isProduction($alarm, $asset)));
 
         $decision = Decision::decide([
             'severity'             => (int) $alarm['severity'],

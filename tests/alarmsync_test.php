@@ -2,7 +2,7 @@
 
 require __DIR__ . '/bootstrap.php';
 foreach (['OpManager/ClientException', 'OpManager/AlarmSource', 'Ticketing/AssetResolver', 'Ticketing/AlarmStore',
-          'Ticketing/TicketGateway', 'Ticketing/ProductionCheck', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmSync'] as $f) {
+          'Ticketing/TicketGateway', 'Ticketing/ProductionCheck', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmFilter', 'Ticketing/AlarmSync'] as $f) {
     require OPM_ROOT . "/src/{$f}.php";
 }
 
@@ -235,5 +235,32 @@ $stats = $sync->processOne($al('w1', 1, 'dev-w'), $now);
 check('processOne creates the ticket', $stats['created'] === 1 && $store->find('w1')['tickets_id'] === 100);
 $stats = $sync->processOne($al('w1', 1, 'dev-w'), $now);
 check('lock serialises processing: second identical call is a no-op', $stats['created'] === 0 && $gw->log === ['create 100 w1']);
+
+// v0.3.0: alarm filter (event type / message keyword) only blocks NEW tickets.
+$typed = static fn (string $key, int $sev, string $type, string $msg = 'x') => ['event_type' => $type] + $al($key, $sev, "dev-{$key}", $msg);
+$filtered = $cfg + ['filter_mode' => 'exclude', 'filter_event_types' => ['CPU Utilization'], 'filter_keywords' => ['threshold']];
+$s = new Src([$typed('f1', 1, 'CPU Utilization'), $typed('f2', 1, 'Custom', 'Disk Threshold violated'), $typed('f3', 1, 'Device Down')]);
+$store = new Store(); $gw = new Gw();
+$sync = new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $filtered);
+$sync->run($now);
+check('excluded event type is stored without a ticket', $store->find('f1') !== null && $store->find('f1')['tickets_id'] === 0);
+check('excluded keyword is stored without a ticket', $store->find('f2') !== null && $store->find('f2')['tickets_id'] === 0);
+check('other alarm still gets its ticket', $store->find('f3')['tickets_id'] > 0);
+
+// an alarm that already has a ticket keeps its lifecycle after it becomes filtered
+[$sync0, $src0, $store0, $gw0] = $mk([$typed('g1', 1, 'CPU Utilization')]);
+$sync0->run($now);
+$t = $store0->find('g1')['tickets_id'];
+$gw0->log = [];
+$sync1 = new AlarmSync($src0, $store0, $gw0, new Assets(), new Prod(), $filtered);
+$src0->active = [$typed('g1', 5, 'CPU Utilization')];
+$sync1->run($now);
+check('filtered alarm with an existing ticket is still solved on clear', $t > 0 && in_array("solve {$t}", $gw0->log, true));
+
+$inc = $cfg + ['filter_mode' => 'include', 'filter_event_types' => ['Device Down'], 'filter_keywords' => []];
+$store = new Store(); $gw = new Gw();
+$sync = new AlarmSync(new Src([$typed('h1', 1, 'CPU Utilization'), $typed('h2', 1, 'Device Down')]), $store, $gw, new Assets(), new Prod(), $inc);
+$sync->run($now);
+check('include mode: only listed alarms get tickets', $store->find('h1')['tickets_id'] === 0 && $store->find('h2')['tickets_id'] > 0);
 
 done();

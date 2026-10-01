@@ -100,6 +100,24 @@ check('no production range selected by default', Config::DEFAULTS['production_ad
 $r = Config::sanitizeTicketing(['production_addressings' => ['3', '7', 'x', '-2']] + $t);
 check('production ranges stored as positive ids', json_decode($r['values']['production_addressings'], true) === [3, 7]);
 
+// v0.3.0: alarm filter (user decision 2026-10-01): event types + message keywords, exclude/include.
+require OPM_ROOT . '/src/Ticketing/AlarmFilter.php';
+check('filter modes shared with AlarmFilter', Config::FILTER_MODES === \GlpiPlugin\Opmanager\Ticketing\AlarmFilter::MODES);
+check('filter off by default', Config::DEFAULTS['ticket_filter_mode'] === 'exclude' && Config::DEFAULTS['ticket_filter_event_types'] === '[]' && Config::DEFAULTS['ticket_filter_keywords'] === '');
+$r = Config::sanitizeTicketing(['ticket_filter_mode' => 'include', 'ticket_filter_event_types' => [' CPU Utilization ', '', 'CPU Utilization', 'Device Down'],
+    'ticket_filter_keywords' => "threshold\r\n\r\n  utilization  \nthreshold"] + $t);
+check('filter form valid', $r['errors'] === [], implode('; ', $r['errors']));
+check('filter mode stored', $r['values']['ticket_filter_mode'] === 'include');
+check('event types trimmed, blank and duplicates dropped', json_decode($r['values']['ticket_filter_event_types'], true) === ['CPU Utilization', 'Device Down']);
+check('keywords one per line, trimmed, deduplicated', $r['values']['ticket_filter_keywords'] === "threshold\nutilization");
+$r = Config::sanitizeTicketing(['ticket_filter_mode' => 'drop_all'] + $t);
+check('unknown filter mode falls back to exclude', $r['values']['ticket_filter_mode'] === 'exclude');
+check('no filter posted = filter off', $r['values']['ticket_filter_event_types'] === '[]' && $r['values']['ticket_filter_keywords'] === '');
+$r = Config::sanitizeTicketing(['ticket_filter_keywords' => str_repeat('x', 2001)] + $t);
+check('oversized keyword list rejected', !array_key_exists('ticket_filter_keywords', $r['values']) && count($r['errors']) === 1);
+check('filter settings decoded for the engine', Config::filterSettings('include', '["Device Down"]', "a\nb") === ['filter_mode' => 'include', 'filter_event_types' => ['Device Down'], 'filter_keywords' => ['a', 'b']]);
+check('broken stored filter decodes to off', Config::filterSettings('x', 'not json', '') === ['filter_mode' => 'exclude', 'filter_event_types' => [], 'filter_keywords' => []]);
+
 // v0.2.1: OpManager category in the default description, so GLPI ticket rules can map it (user decision, option A).
 check('default description carries the OpManager category line', str_contains(Config::DEFAULT_CONTENT_PATTERN, "Category: {category}\n"));
 check('old default still known for the upgrade', Config::PREVIOUS_CONTENT_PATTERNS !== [] && !in_array(Config::DEFAULT_CONTENT_PATTERN, Config::PREVIOUS_CONTENT_PATTERNS, true));

@@ -49,6 +49,11 @@ final class Config
         "OpManager alarm {alarm_key}\nDevice: {device} ({ip})\nSeverity: {severity}\nAlarm type: {alarm_type}\nTime: {time}\n\n{message}",
     ];
 
+    /** Alarm filter modes; same list as Ticketing\AlarmFilter::MODES (first = default). */
+    public const FILTER_MODES = ['exclude', 'include'];
+
+    public const FILTER_KEYWORDS_MAX = 2000;
+
     public const DEFAULTS = [
         'opm_url'                => '',
         'opm_api_key'            => '',
@@ -70,6 +75,9 @@ final class Config
         'storm_threshold'             => '10',
         'storm_window_minutes'        => '5',
         'production_addressings'      => '[]',
+        'ticket_filter_mode'          => 'exclude',
+        'ticket_filter_event_types'   => '[]',
+        'ticket_filter_keywords'      => '',
         'last_alarm_sync'             => '',
         'last_alarm_sync_error'       => '',
     ];
@@ -225,6 +233,23 @@ final class Config
         $ranges = array_values(array_filter(array_map('intval', (array) ($post['production_addressings'] ?? [])), static fn (int $id) => $id > 0));
         $values['production_addressings'] = (string) json_encode($ranges);
 
+        $mode = (string) ($post['ticket_filter_mode'] ?? '');
+        $values['ticket_filter_mode'] = in_array($mode, self::FILTER_MODES, true) ? $mode : self::FILTER_MODES[0];
+        $types = [];
+        foreach ((array) ($post['ticket_filter_event_types'] ?? []) as $type) {
+            $type = trim((string) $type);
+            if ($type !== '' && strlen($type) <= 255) {
+                $types[$type] = true;
+            }
+        }
+        $values['ticket_filter_event_types'] = (string) json_encode(array_keys($types));
+        $keywords = implode("\n", self::lines((string) ($post['ticket_filter_keywords'] ?? '')));
+        if (strlen($keywords) > self::FILTER_KEYWORDS_MAX) {
+            $errors[] = sprintf(__('%s must be at most %d characters', 'opmanager'), 'ticket_filter_keywords', self::FILTER_KEYWORDS_MAX);
+        } else {
+            $values['ticket_filter_keywords'] = $keywords;
+        }
+
         foreach (['relink_window_hours' => [0, 720], 'storm_threshold' => [0, 1000], 'storm_window_minutes' => [1, 120]] as $key => [$min, $max]) {
             $n = (int) ($post[$key] ?? -1);
             if ($n < $min || $n > $max) {
@@ -264,7 +289,31 @@ final class Config
             'entity_default'       => (int) self::get('ticket_entity_default'),
             'use_ipnetwork'        => self::get('ticket_use_ipnetwork_entity') === '1',
             'production_addressings' => array_values(array_map('intval', (array) (json_decode(self::get('production_addressings'), true) ?: []))),
+        ] + self::filterSettings(self::get('ticket_filter_mode'), self::get('ticket_filter_event_types'), self::get('ticket_filter_keywords'));
+    }
+
+    /** @return array{filter_mode: string, filter_event_types: list<string>, filter_keywords: list<string>} */
+    public static function filterSettings(string $mode, string $types_json, string $keywords): array
+    {
+        $types = json_decode($types_json, true);
+        return [
+            'filter_mode'        => in_array($mode, self::FILTER_MODES, true) ? $mode : self::FILTER_MODES[0],
+            'filter_event_types' => is_array($types) ? array_values(array_map('strval', $types)) : [],
+            'filter_keywords'    => self::lines($keywords),
         ];
+    }
+
+    /** @return list<string> trimmed, non-empty, unique lines */
+    private static function lines(string $text): array
+    {
+        $out = [];
+        foreach (explode("\n", self::normaliseLines($text)) as $line) {
+            $line = trim($line);
+            if ($line !== '') {
+                $out[$line] = true;
+            }
+        }
+        return array_map('strval', array_keys($out));
     }
 
     /**
