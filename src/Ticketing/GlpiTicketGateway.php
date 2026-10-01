@@ -33,97 +33,132 @@ final class GlpiTicketGateway implements TicketGateway
 
     public function create(array $alarm, array $asset): int
     {
-        // A previous run may have created the ticket and then failed before the
-        // alarm row was updated: find it by its externalid instead of adding again.
-        $externalid = TicketBuilder::externalId((string) $alarm['alarm_key']);
-        $found      = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0], ['id DESC'], 1);
-        if ($found !== []) {
-            return (int) array_key_first($found);
-        }
+        return $this->asPlugin(function () use ($alarm, $asset): int {
+            // A previous run may have created the ticket and then failed before the
+            // alarm row was updated: find it by its externalid instead of adding again.
+            $externalid = TicketBuilder::externalId((string) $alarm['alarm_key']);
+            $found      = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0], ['id DESC'], 1);
+            if ($found !== []) {
+                return (int) array_key_first($found);
+            }
 
-        $entity                                 = $this->entityFor($alarm, $asset);
-        [$template_id, $predefined, $mandatory] = $this->template($entity);
-        $input = TicketBuilder::build($alarm, $asset, $entity, $predefined, $template_id, $this->cfg);
+            $entity                                 = $this->entityFor($alarm, $asset);
+            [$template_id, $predefined, $mandatory] = $this->template($entity);
+            $input = TicketBuilder::build($alarm, $asset, $entity, $predefined, $template_id, $this->cfg);
 
-        $missing = TicketBuilder::missingMandatory($input, $mandatory);
-        if ($missing !== []) {
-            \Toolbox::logInFile('opmanager', sprintf(
-                "AlarmSync: alarm %s not ticketed, template %d mandatory field(s) not filled: %s\n",
-                $alarm['alarm_key'],
-                $template_id,
-                implode(', ', $missing)
-            ));
-            return 0;
-        }
+            $missing = TicketBuilder::missingMandatory($input, $mandatory);
+            if ($missing !== []) {
+                \Toolbox::logInFile('opmanager', sprintf(
+                    "AlarmSync: alarm %s not ticketed, template %d mandatory field(s) not filled: %s\n",
+                    $alarm['alarm_key'],
+                    $template_id,
+                    implode(', ', $missing)
+                ));
+                return 0;
+            }
 
-        $ticket = new \Ticket();
-        $id     = $ticket->add($input);
-        return $id ? (int) $id : 0;
+            $ticket = new \Ticket();
+            $id     = $ticket->add($input);
+            return $id ? (int) $id : 0;
+        });
     }
 
     public function createStorm(array $alarm, string $now): int
     {
-        $entity                     = (int) $this->cfg['entity_default'];
-        [$template_id, $predefined] = $this->template($entity);
-        $cfg   = ['title_pattern' => Messages::stormTitle($now), 'content_pattern' => Messages::stormTitle($now)] + $this->cfg;
-        $input = TicketBuilder::build($alarm, ['itemtype' => '', 'items_id' => 0], $entity, $predefined, $template_id, $cfg);
-        // The storm ticket is not the alarm's own ticket: do not claim its externalid.
-        $input['externalid'] = 'opmanager:storm:' . $now;
+        return $this->asPlugin(function () use ($alarm, $now): int {
+            $entity                     = (int) $this->cfg['entity_default'];
+            [$template_id, $predefined] = $this->template($entity);
+            $cfg   = ['title_pattern' => Messages::stormTitle($now), 'content_pattern' => Messages::stormTitle($now)] + $this->cfg;
+            $input = TicketBuilder::build($alarm, ['itemtype' => '', 'items_id' => 0], $entity, $predefined, $template_id, $cfg);
+            // The storm ticket is not the alarm's own ticket: do not claim its externalid.
+            $input['externalid'] = 'opmanager:storm:' . $now;
 
-        $ticket = new \Ticket();
-        $id     = $ticket->add($input);
-        return $id ? (int) $id : 0;
+            $ticket = new \Ticket();
+            $id     = $ticket->add($input);
+            return $id ? (int) $id : 0;
+        });
     }
 
     public function followup(int $tickets_id, string $text): void
     {
-        $this->withoutAutoAssign(function () use ($tickets_id, $text) {
-            (new \ITILFollowup())->add([
-                'itemtype'   => \Ticket::class,
-                'items_id'   => $tickets_id,
-                'content'    => self::html($text),
-                'is_private' => 0,
-                'users_id'   => (int) $this->cfg['service_user'],
-                '_no_reopen' => 1,
-            ]);
+        $this->asPlugin(function () use ($tickets_id, $text): void {
+            $this->withoutAutoAssign(function () use ($tickets_id, $text) {
+                (new \ITILFollowup())->add([
+                    'itemtype'   => \Ticket::class,
+                    'items_id'   => $tickets_id,
+                    'content'    => self::html($text),
+                    'is_private' => 0,
+                    'users_id'   => (int) $this->cfg['service_user'],
+                    '_no_reopen' => 1,
+                ]);
+            });
         });
     }
 
     public function reopen(int $tickets_id, string $text): void
     {
-        $this->withoutAutoAssign(function () use ($tickets_id, $text) {
-            (new \ITILFollowup())->add([
-                'itemtype'   => \Ticket::class,
-                'items_id'   => $tickets_id,
-                'content'    => self::html($text),
-                'is_private' => 0,
-                'users_id'   => (int) $this->cfg['service_user'],
-                'add_reopen' => 1,
-            ]);
+        $this->asPlugin(function () use ($tickets_id, $text): void {
+            $this->withoutAutoAssign(function () use ($tickets_id, $text) {
+                (new \ITILFollowup())->add([
+                    'itemtype'   => \Ticket::class,
+                    'items_id'   => $tickets_id,
+                    'content'    => self::html($text),
+                    'is_private' => 0,
+                    'users_id'   => (int) $this->cfg['service_user'],
+                    'add_reopen' => 1,
+                ]);
+            });
         });
     }
 
     public function solve(int $tickets_id, string $text): void
     {
-        $status = $this->status($tickets_id);
-        if ($status === null || in_array($status, [5, 6], true)) {
-            return;
-        }
-        (new \ITILSolution())->add([
-            'itemtype' => \Ticket::class,
-            'items_id' => $tickets_id,
-            'content'  => self::html($text),
-            'users_id' => (int) $this->cfg['service_user'],
-        ]);
+        $this->asPlugin(function () use ($tickets_id, $text): void {
+            $status = $this->status($tickets_id);
+            if ($status === null || in_array($status, [5, 6], true)) {
+                return;
+            }
+            (new \ITILSolution())->add([
+                'itemtype' => \Ticket::class,
+                'items_id' => $tickets_id,
+                'content'  => self::html($text),
+                'users_id' => (int) $this->cfg['service_user'],
+            ]);
+        });
     }
 
     public function link(int $new_tickets_id, int $old_tickets_id): void
     {
-        (new \Ticket_Ticket())->add([
-            'tickets_id_1' => $new_tickets_id,
-            'tickets_id_2' => $old_tickets_id,
-            'link'         => \Ticket_Ticket::LINK_TO,
-        ]);
+        $this->asPlugin(function () use ($new_tickets_id, $old_tickets_id): void {
+            (new \Ticket_Ticket())->add([
+                'tickets_id_1' => $new_tickets_id,
+                'tickets_id_2' => $old_tickets_id,
+                'link'         => \Ticket_Ticket::LINK_TO,
+            ]);
+        });
+    }
+
+    /** Depth of plugin writes in progress; the outbound hooks ignore what happens meanwhile (D24). */
+    private static int $writing = 0;
+
+    public static function isWriting(): bool
+    {
+        return self::$writing > 0;
+    }
+
+    /**
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     */
+    private function asPlugin(callable $fn): mixed
+    {
+        self::$writing++;
+        try {
+            return $fn();
+        } finally {
+            self::$writing--;
+        }
     }
 
     public function closedSince(int $tickets_id, string $since): bool
