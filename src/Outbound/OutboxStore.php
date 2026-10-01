@@ -8,7 +8,7 @@ interface OutboxStore
     /** @param array{alarm_key: string, entity_key: string, tickets_id: int, users_id: int, action: string, payload: string} $row */
     public function enqueue(array $row, string $now): void;
 
-    /** A pending or sent clear exists for this alarm: never queue a second one. */
+    /** A clear for this alarm is still waiting: do not queue a second one. */
     public function hasClear(string $alarm_key): bool;
 
     /** @return list<array{id: int, alarm_key: string, entity_key: string, action: string, payload: string, attempts: int, next_try_at: string}> oldest first */

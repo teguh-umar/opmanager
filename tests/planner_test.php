@@ -35,4 +35,8 @@ check('alarm with a clear already queued is skipped', array_map(fn ($r) => $r['a
 $long = P::forFollowup(55, false, str_repeat('a', 5000), 'budi', $active, 7);
 check('note payload capped', strlen($long[0]['payload']) <= P::NOTE_MAX);
 
+check('own followup by a technician is original', P::isOriginalFollowup(7, 3, 0));
+check('followup authored by the service user is not sent', !P::isOriginalFollowup(3, 3, 0));
+check('followup copied by a merge is not sent', !P::isOriginalFollowup(7, 3, 12));
+
 done();

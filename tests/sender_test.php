@@ -62,4 +62,9 @@ $box->add('6', 'bogus');
 (new Sender($box, $opm, 10))->run($now);
 check('unknown action fails without calling OpManager', $box->rows[1]['state'] === 'failed' && $opm->calls === []);
 
+$box = new Box(); $opm = new Opm(); $opm->down = ['E7', 'E8'];
+$box->add('7', 'note', 'a'); $box->add('8', 'note', 'b');
+(new Sender($box, $opm, 10))->run($now, 20, true);
+check('stop at first failure: one OpManager call only', $opm->calls === ['note E7 a'] && $box->rows[2]['attempts'] === 0);
+
 done();
