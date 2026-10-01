@@ -22,7 +22,7 @@ final class Client implements DeviceSource, AlarmSource
         private bool $verifySsl = true,
         ?callable $transport = null,
     ) {
-        $this->transport = $transport ?? $this->guzzleTransport(...);
+        $this->transport = $transport ?? $this->curlTransport(...);
     }
 
     public function listDevices(): array
@@ -70,19 +70,42 @@ final class Client implements DeviceSource, AlarmSource
     }
 
     /**
+     * Plain ext-curl (a GLPI requirement) rather than Guzzle: another plugin can ship its own
+     * older Guzzle and win the autoload race (telegrambot bundles 6.2.1), which breaks
+     * GLPI's Guzzle 7 with "Undefined constant ClientInterface::MAJOR_VERSION".
+     *
      * @param array<string, string> $query
      * @param array<string, string> $headers
      * @return array{status: int, body: string}
      */
-    private function guzzleTransport(string $url, array $query, array $headers): array
+    private function curlTransport(string $url, array $query, array $headers): array
     {
-        $http = new \GuzzleHttp\Client([
-            'timeout'         => 30,
-            'connect_timeout' => 10,
-            'verify'          => $this->verifySsl,
-            'http_errors'     => false,
+        if ($query !== []) {
+            $url .= (str_contains($url, '?') ? '&' : '?') . http_build_query($query, '', '&', PHP_QUERY_RFC3986);
+        }
+        $lines = [];
+        foreach ($headers as $name => $value) {
+            $lines[] = $name . ': ' . $value;
+        }
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPGET        => true,
+            CURLOPT_HTTPHEADER     => $lines,
+            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => $this->verifySsl,
+            CURLOPT_SSL_VERIFYHOST => $this->verifySsl ? 2 : 0,
+            CURLOPT_FOLLOWLOCATION => false,
         ]);
-        $response = $http->request('GET', $url, ['query' => $query, 'headers' => $headers]);
-        return ['status' => $response->getStatusCode(), 'body' => (string) $response->getBody()];
+        $body = curl_exec($ch);
+        if ($body === false) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            throw new \RuntimeException($error);
+        }
+        $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+        curl_close($ch);
+        return ['status' => $status, 'body' => (string) $body];
     }
 }
