@@ -62,6 +62,8 @@ namespace {
     require OPM_ROOT . '/src/Ticketing/RangeProductionCheck.php';
     require OPM_ROOT . '/src/Ticketing/AddressingRanges.php';
     require OPM_ROOT . '/src/Ticketing/AlarmFilter.php';
+    require OPM_ROOT . '/src/Outbound/OutboxStore.php';
+    require OPM_ROOT . '/src/Outbound/DbOutboxStore.php';
     require OPM_ROOT . '/src/SuiteConfig.php';
 
     use GlpiPlugin\Opmanager\RightDefinition as R;
@@ -99,6 +101,10 @@ namespace {
     check('warning when no IP Addressing range is available', str_contains($html, 'No ticket will be created'));
 
     // v0.3.0 alarm filter
+    // Plan 3 outbound
+    check('outbound retry field rendered', str_contains($html, 'name="outbound_max_attempts"'));
+    check('outbound queue status shown', str_contains($html, 'Sent to OpManager'));
+
     check('filter mode selector rendered', str_contains($html, "name='ticket_filter_mode'") || str_contains($html, 'name="ticket_filter_mode"'));
     check('filter keywords textarea rendered', str_contains($html, 'name="ticket_filter_keywords"'));
     check('filter off is stated', str_contains($html, 'Alarm filter is off'));

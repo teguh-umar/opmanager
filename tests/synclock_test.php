@@ -9,4 +9,11 @@ check('shared lock name', \GlpiPlugin\Opmanager\Ticketing\SyncLock::NAME === 'op
 $cron = (string) file_get_contents(OPM_ROOT . '/src/Cron.php');
 check('cron AlarmSync takes the lock and releases it in finally', (bool) preg_match('/cronAlarmSync.*?->acquire\(60\).*?finally.*?->release\(\)/s', $cron));
 
+// Plan 3
+check('outbox cron sends with the configured retry limit', (bool) preg_match('/function cronOutboxSend.*?new Sender\(new DbOutboxStore\(\), \$client, \$cfg\[\'outbound_max_attempts\'\]\)/s', $cron));
+check('outbox cron described', str_contains($cron, "'OutboxSend' =>"));
+$alarm = (string) file_get_contents(OPM_ROOT . '/src/Alarm.php');
+check('alarm page title is device + alarm id, not N/A', (bool) preg_match("/function getName\(.*?display_name.*?alarm_key/s", $alarm));
+check('alarm page shows the entity', str_contains($alarm, "'entity_key'"));
+
 done();
