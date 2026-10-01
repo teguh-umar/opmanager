@@ -6,6 +6,7 @@ file_put_contents(getenv('OPM_STUB_LOG'), json_encode([
     'path'   => parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH),
     'query'  => $_GET,
     'apikey' => $_SERVER['HTTP_APIKEY'] ?? null,
+    'form'   => $_POST,
 ]));
 
 if (str_starts_with($_SERVER['REQUEST_URI'], '/fail')) {
