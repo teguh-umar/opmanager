@@ -74,6 +74,7 @@ final class Config
         'relink_window_hours'         => '24',
         'storm_threshold'             => '10',
         'storm_window_minutes'        => '5',
+        'outbound_max_attempts'       => '10',
         'production_addressings'      => '[]',
         'ticket_filter_mode'          => 'exclude',
         'ticket_filter_event_types'   => '[]',
@@ -250,7 +251,7 @@ final class Config
             $values['ticket_filter_keywords'] = $keywords;
         }
 
-        foreach (['relink_window_hours' => [0, 720], 'storm_threshold' => [0, 1000], 'storm_window_minutes' => [1, 120]] as $key => [$min, $max]) {
+        foreach (['relink_window_hours' => [0, 720], 'storm_threshold' => [0, 1000], 'storm_window_minutes' => [1, 120], 'outbound_max_attempts' => [1, 50]] as $key => [$min, $max]) {
             $n = (int) ($post[$key] ?? -1);
             if ($n < $min || $n > $max) {
                 $errors[] = sprintf(__('%s must be between %d and %d', 'opmanager'), $key, $min, $max);
@@ -288,6 +289,7 @@ final class Config
             'content_pattern'      => self::get('ticket_content_pattern'),
             'entity_default'       => (int) self::get('ticket_entity_default'),
             'use_ipnetwork'        => self::get('ticket_use_ipnetwork_entity') === '1',
+            'outbound_max_attempts' => max(1, (int) self::get('outbound_max_attempts')),
             'production_addressings' => array_values(array_map('intval', (array) (json_decode(self::get('production_addressings'), true) ?: []))),
         ] + self::filterSettings(self::get('ticket_filter_mode'), self::get('ticket_filter_event_types'), self::get('ticket_filter_keywords'));
     }

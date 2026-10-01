@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- GLPI → OpManager:
+  - when a GLPI user adds a public followup to an alarm ticket, each still-active alarm of
+    the ticket gets a note;
+  - when a GLPI user solves or closes the ticket, each still-active alarm gets a note and is
+    then cleared in OpManager;
+  - actions made by the plugin itself, by cron or by GLPI automation are never sent back.
+- Queue with retries (1, 2, 4 … 60 min; the Setup limit defaults to 10). Setup shows the queue
+  status and the last error.
+- Alarm page: the title shows the device and the alarm ID (it was "N/A"), and the OpManager
+  entity is shown.
+
 ## 0.3.0
 
 - OpManager webhook receiver `/plugins/opmanager/front/webhook.php`:

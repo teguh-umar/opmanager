@@ -180,6 +180,15 @@ final class SuiteConfig
         if ($aerror !== '') {
             echo '<div class="alert alert-warning">' . __s('Last alarm sync error', 'opmanager') . ': ' . htmlescape($aerror) . '</div>';
         }
+
+        // Plan 3: GLPI -> OpManager queue (spec §8).
+        echo '<div class="mt-3"><strong>' . __s('Sent to OpManager (notes and clears)', 'opmanager') . '</strong></div>';
+        echo self::textRow('outbound_max_attempts' . $sfx, 'outbound_max_attempts', __('Retries before a note/clear is given up (1-50)', 'opmanager'), Config::get('outbound_max_attempts'), 'number', $disabled);
+        $box = (new \GlpiPlugin\Opmanager\Outbound\DbOutboxStore())->summary();
+        echo '<div>' . sprintf(__s('Waiting: %d, given up: %d', 'opmanager'), $box['pending'], $box['failed']) . '</div>';
+        if ($box['last_error'] !== '') {
+            echo '<div class="alert alert-warning">' . __s('Last OpManager write error', 'opmanager') . ': ' . htmlescape($box['last_error']) . '</div>';
+        }
         echo '</fieldset>';
 
         $last  = Config::get('last_device_sync');

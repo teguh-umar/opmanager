@@ -148,6 +148,27 @@ final class DbAlarmStore implements AlarmStore
         ])->current()['cpt'] === 0;
     }
 
+    /**
+     * Still-active alarms of a ticket, for the outbound notes/clears (Plan 3).
+     *
+     * @return list<array{alarm_key: string, entity_key: string}>
+     */
+    public static function activeForTicket(int $tickets_id): array
+    {
+        global $DB;
+
+        $out = [];
+        foreach ($DB->request([
+            'SELECT' => ['alarm_key', 'entity_key'],
+            'FROM'   => Alarm::getTable(),
+            'WHERE'  => ['tickets_id' => $tickets_id, 'state' => 'active', 'NOT' => ['entity_key' => '']],
+            'ORDER'  => 'id',
+        ]) as $r) {
+            $out[] = ['alarm_key' => (string) $r['alarm_key'], 'entity_key' => (string) $r['entity_key']];
+        }
+        return $out;
+    }
+
     public function ownTicketsSince(string $since): int
     {
         global $DB;
