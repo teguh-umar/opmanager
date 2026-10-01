@@ -51,7 +51,10 @@ final class ResponseGuard
     public static function errorMessage(mixed $error): string
     {
         if (is_array($error)) {
-            $code    = is_scalar($error['code'] ?? null) ? (string) $error['code'] : '?';
+            // Two shapes seen on production: {"code","message"} (bad key) and
+            // {"message","errorcode"} (no right / wrong method), 2026-10-01.
+            $raw     = $error['code'] ?? $error['errorcode'] ?? null;
+            $code    = is_scalar($raw) ? (string) $raw : '?';
             $message = is_scalar($error['message'] ?? null) ? (string) $error['message'] : 'no message';
             return sprintf('OpManager error %s: %s', $code, $message);
         }

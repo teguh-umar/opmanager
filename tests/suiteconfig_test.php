@@ -5,6 +5,7 @@ namespace {
 
     $GLOBALS['RIGHTS'] = [];
     $GLOBALS['CFG_VALUES'] = [];
+    $GLOBALS['CFG_GLPI'] = ['url_base' => 'https://comit.pgn.co.id'];
 
     class CommonGLPI {}
     class Session
@@ -60,6 +61,7 @@ namespace {
     require OPM_ROOT . '/src/Ticketing/ProductionCheck.php';
     require OPM_ROOT . '/src/Ticketing/RangeProductionCheck.php';
     require OPM_ROOT . '/src/Ticketing/AddressingRanges.php';
+    require OPM_ROOT . '/src/Ticketing/AlarmFilter.php';
     require OPM_ROOT . '/src/SuiteConfig.php';
 
     use GlpiPlugin\Opmanager\RightDefinition as R;
@@ -95,6 +97,39 @@ namespace {
     }
 
     check('warning when no IP Addressing range is available', str_contains($html, 'No ticket will be created'));
+
+    // v0.3.0 alarm filter
+    check('filter mode selector rendered', str_contains($html, "name='ticket_filter_mode'") || str_contains($html, 'name="ticket_filter_mode"'));
+    check('filter keywords textarea rendered', str_contains($html, 'name="ticket_filter_keywords"'));
+    check('filter off is stated', str_contains($html, 'Alarm filter is off'));
+    $GLOBALS['CFG_VALUES']['ticket_filter_event_types'] = '["CPU Utilization"]';
+    $GLOBALS['CFG_VALUES']['ticket_filter_keywords']    = "threshold\n<b>x</b>";
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('saved event type stays selectable though not seen yet', (bool) preg_match('/name="ticket_filter_event_types\[\]" value="CPU Utilization"[^>]* checked/', $html));
+    check('keywords shown escaped', str_contains($html, "threshold\n&lt;b&gt;x&lt;/b&gt;"));
+    check('filter on: no off notice', !str_contains($html, 'Alarm filter is off'));
+
+    check('webhook URL shown', str_contains($html, 'https://comit.pgn.co.id/plugins/opmanager/front/webhook.php'));
+    check('webhook header name shown', str_contains($html, 'X-OPM-Token'));
+    check('generate token button shown to editors', str_contains($html, "name='generate_webhook_token'"));
+    $GLOBALS['CFG_VALUES']['webhook_token'] = 'ENCRYPTED-WEBHOOK-TOKEN';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('token never rendered in setup', !str_contains($html, 'ENCRYPTED-WEBHOOK-TOKEN'));
+
+    $_SESSION[SuiteConfig::NEW_TOKEN_KEY] = 'abc123newtoken';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('new token shown inline in a copyable field', str_contains($html, "value='abc123newtoken'") || str_contains($html, 'value="abc123newtoken"'));
+    check('new token is consumed after one display', !isset($_SESSION[SuiteConfig::NEW_TOKEN_KEY]));
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('new token not shown a second time', !str_contains($html, 'abc123newtoken'));
 
     done();
 }

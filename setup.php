@@ -7,7 +7,7 @@
  * @license GPL-3.0-or-later
  */
 
-define('PLUGIN_OPMANAGER_VERSION', '0.2.2');
+define('PLUGIN_OPMANAGER_VERSION', '0.3.0');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
@@ -39,6 +39,16 @@ function plugin_opmanager_check_prerequisites()
 function plugin_opmanager_check_config()
 {
     return true;
+}
+
+/**
+ * Runs from Plugin::bootPlugins(), before SessionStart decides whether a request is
+ * stateless - plugin_init is too late for this (11.0.5; same as core glpiinventory).
+ */
+function plugin_opmanager_boot(): void
+{
+    // Machine-to-machine webhook from OpManager: no session, no CSRF, own token auth.
+    \Glpi\Http\SessionManager::registerPluginStatelessPath('opmanager', '#^/front/webhook\.php$#');
 }
 
 function plugin_init_opmanager()

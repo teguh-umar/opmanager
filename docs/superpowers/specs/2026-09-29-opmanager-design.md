@@ -62,6 +62,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D19 | Severity OpManager asli (terverifikasi di produksi 2026-09-30): `numericSeverity` 1 Critical, 2 Trouble, 3 Attention, 4 Service Down, 5 Clear. Menggantikan nama Critical/Major/Minor/Warning di D11 dan §7/§10. Default tiket tetap **Critical saja** (= 1). Field `severity` berisi HTML, tidak boleh dirender; pakai `severityString` | 2026-09-30 |
 | D21 | Tiket hanya untuk severity yang dicentang (default Critical) **pada aset produksi**. Aset produksi = IP alarm atau salah satu IP aset GLPI pasangannya berada di rentang **IP Addressing** (plugin addressing) yang dicentang di Setup. Tanpa rentang yang dicentang, tidak ada tiket. Middleware webhook lama dimatikan saat plugin aktif | 2026-09-30 |
 | D22 | Followup: perubahan severity langsung; perubahan pesan saja paling banyak satu followup per jam per alarm (final review, tidak dibantah user) | 2026-09-30 |
+| D23 | Filter alarm untuk tiket **baru** (mis. High CPU Utilization tidak jadi tiket): alarm cocok bila Event Type OpManager dicentang **atau** pesannya mengandung kata kunci (per baris, tidak peka huruf). Mode **Kecualikan** (default) atau **Hanya yang dipilih**. Daftar kosong = filter mati. Berlaku di atas D21; alarm terfilter tetap tersimpan dan tampil; alarm yang sudah punya tiket tidak terpengaruh (followup + solve tetap jalan) | 2026-10-01 |
 
 ## 3. Arsitektur
 
