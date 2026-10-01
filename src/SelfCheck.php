@@ -67,6 +67,13 @@ final class SelfCheck
                 self::assert($lock->acquire(1), 'GET_LOCK opmanager_alarm_sync not obtainable');
                 $lock->release();
             },
+            'outbound/table' => static function (): void {
+                global $DB;
+                self::assert($DB->tableExists('glpi_plugin_opmanager_outbox'), 'outbox table missing - re-run plugin:install');
+            },
+            'outbound/cron' => static function (): void {
+                self::assert((new \CronTask())->getFromDBbyName(Cron::class, 'OutboxSend'), 'OutboxSend cron not registered - re-run plugin:install');
+            },
             'tickets/template-resolves' => static function (): void {
                 $cfg = Config::ticketingConfig();
                 if ($cfg['template_id'] > 0) {
