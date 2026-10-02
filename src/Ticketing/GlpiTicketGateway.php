@@ -37,7 +37,8 @@ final class GlpiTicketGateway implements TicketGateway
             // A previous run may have created the ticket and then failed before the
             // alarm row was updated: find it by its externalid instead of adding again.
             $externalid = TicketBuilder::externalId((string) $alarm['alarm_key']);
-            $found      = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0], ['id DESC'], 1);
+            // A Closed ticket is final (D30): the alarm's recurrence gets a new ticket.
+            $found      = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0, 'NOT' => ['status' => 6]], ['id DESC'], 1);
             if ($found !== []) {
                 return (int) array_key_first($found);
             }

@@ -69,6 +69,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D27 | Followup **publik** dari teknisi → selain `note`, alarm aktif tiket di-**acknowledge** di OpManager (tanda sudah ditangani). Ack tidak diantrekan lagi bila masih ada ack menunggu untuk alarm itu; ack ulang aman (bukan toggle, lihat §14). Aturan D24/D25 berlaku | 2026-10-02 |
 | D28 | Halaman **Coverage** (aset OpManager vs aset GLPI) di menu OpManager, dikerjakan sebelum kartu dashboard GLPI. Aset GLPI yang dihitung: tipe aset dari Setup, status GLPI yang dipilih di Setup (default semua), punya IP; bisa disaring ke rentang produksi. Tren harian ditunda. Lihat §15 | 2026-10-02 |
 | D29 | Setup OpManager ditata ulang: **strip status** (sync perangkat, sync alarm, webhook, antrean) selalu tampil + **tab** per bagian, satu tombol Save. Nama field form tidak berubah, jadi `front/config.php` tetap. Lihat §15 | 2026-10-02 |
+| D30 | Mengubah D6. Tiket **Closed** bersifat final: tidak pernah dibuka kembali dan tidak diberi followup oleh plugin. Bila Alarm ID yang sama aktif lagi setelah tiketnya Closed, alarm itu dinilai sebagai **alarm baru** (severity, rentang produksi, filter); kalau lolos, dibuat tiket baru yang ditautkan ke tiket Closed itu. Tiket **Solved** dibuka kembali hanya bila alarmnya masih lolos filter. Pemicu: alarm threshold CPU naik-turun membuka kembali tiket Closed berulang kali (#2609300004/05/09) | 2026-10-02 |
 
 ## 3. Arsitektur
 
