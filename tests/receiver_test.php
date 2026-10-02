@@ -39,7 +39,7 @@ check('empty token refused', $r->handle('POST', '', $body)['status'] === 401);
 check('oversized body refused', $r->handle('POST', 'secret-token', str_repeat('x', Receiver::MAX_BODY + 1))['status'] === 413);
 check('invalid JSON refused', $r->handle('POST', 'secret-token', '{nope')['status'] === 400);
 check('missing entity refused', $r->handle('POST', 'secret-token', '{"alarm_id":"1"}')['status'] === 400);
-check('unsafe id refused', $r->handle('POST', 'secret-token', '{"alarm_id":"1 OR 1=1","entity":"2"}')['status'] === 400);
+check('control characters refused', $r->handle('POST', 'secret-token', json_encode(['alarm_id' => '1', 'entity' => "a\nb"]))['status'] === 400);
 check('nothing fetched for refused calls', $s->calls === []);
 
 $res = $r->handle('POST', 'secret-token', $body);
@@ -70,5 +70,24 @@ check('deferred answer names the alarm', ($r->handle('POST', 'secret-token', $bo
 [$r, , $l] = $mk($alarm);
 $boom = new Receiver('secret-token', new Src($alarm), $l, function () { throw new RuntimeException('engine down'); });
 check('engine exception still releases the lock', $boom->handle('POST', 'secret-token', $body)['status'] === 500 && $l->released === 1);
+
+// 0.4.1: real OpManager entities can hold '/', spaces and exceed 64 chars (interfaces).
+$runs   = [];
+$long   = 'IF-192.168.172.245.10000000001-Gi0/1 uplink to core ' . str_repeat('x', 80) . '_Poll';
+[$r, $s] = $mk(['alarm_key' => '10000006678', 'entity_key' => $long, 'severity' => 1]);
+$res = $r->handle('POST', 'secret-token', json_encode(['alarm_id' => '10000006678', 'entity' => $long]));
+check('long entity with slash and spaces is processed', $res['status'] === 200 && $runs === ['10000006678'] && $s->calls === [$long]);
+[$r] = $mk($alarm);
+check('entity over 255 refused', $r->handle('POST', 'secret-token', json_encode(['alarm_id' => '1', 'entity' => str_repeat('e', 256)]))['status'] === 400);
+
+// OpManager "Test Action" sends the placeholders unfilled: answer 200 so the test passes.
+$runs = [];
+[$r, $s] = $mk($alarm);
+$res = $r->handle('POST', 'secret-token', '{"alarm_id":"$alarmid","entity":"$entity"}');
+check('unfilled placeholders = test ping, 200, nothing processed', $res['status'] === 200 && ($res['body']['status'] ?? '') === 'test' && $runs === [] && $s->calls === []);
+
+// A refused body is echoed (truncated, control chars removed) so the log shows what arrived.
+$res = $r->handle('POST', 'secret-token', "{\"alarm_id\":\"1\",\n\"x\":1}");
+check('400 answer carries what was received, one line', $res['status'] === 400 && str_contains($res['body']['received'] ?? '', 'alarm_id') && !str_contains($res['body']['received'] ?? "\n", "\n"));
 
 done();
