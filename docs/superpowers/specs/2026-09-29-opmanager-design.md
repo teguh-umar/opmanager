@@ -67,6 +67,8 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D25 | Hanya followup **publik** yang dikirim sebagai catatan ke OpManager; followup privat tetap internal GLPI | 2026-10-01 |
 | D26 | Tiket di-Close oleh pengguna tanpa solusi yang diketik → alarm tetap di-**clear**, dengan catatan singkat otomatis *"Tiket #N ditutup oleh <user> di GLPI"* (tanpa isi solusi) sebagai jejak | 2026-10-01 |
 | D27 | Followup **publik** dari teknisi → selain `note`, alarm aktif tiket di-**acknowledge** di OpManager (tanda sudah ditangani). Ack tidak diantrekan lagi bila masih ada ack menunggu untuk alarm itu; ack ulang aman (bukan toggle, lihat §14). Aturan D24/D25 berlaku | 2026-10-02 |
+| D28 | Halaman **Coverage** (aset OpManager vs aset GLPI) di menu OpManager, dikerjakan sebelum kartu dashboard GLPI. Aset GLPI yang dihitung: tipe aset dari Setup, status GLPI yang dipilih di Setup (default semua), punya IP; bisa disaring ke rentang produksi. Tren harian ditunda. Lihat §15 | 2026-10-02 |
+| D29 | Setup OpManager ditata ulang: **strip status** (sync perangkat, sync alarm, webhook, antrean) selalu tampil + **tab** per bagian, satu tombol Save. Nama field form tidak berubah, jadi `front/config.php` tetap. Lihat §15 | 2026-10-02 |
 
 ## 3. Arsitektur
 
@@ -419,3 +421,68 @@ token tidak pernah ditampilkan ulang utuh.
   Panggilan kedua pada alarm yang sudah di-ack: `{"ackMessage":"The selected Alarm is not
   Acknowledged",...}` tanpa `error`, dan alarm **tetap** acknowledged (bukan toggle). Ack
   tercatat atas nama pemilik API key; `listAlarms` memberi field `who` (siapa yang meng-ack).
+
+## 15. Coverage dan Setup baru (v0.6.0, D28–D29)
+
+### 15.1 Halaman Coverage (menu OpManager → Coverage, hak `plugin_opmanager_monitoring` READ)
+
+**Aset GLPI dalam lingkup:**
+- itemtype termasuk `asset_itemtypes` dari Setup;
+- tidak terhapus dan bukan template; untuk custom asset, `getSystemSQLCriteria()` ikut dipakai;
+- `states_id` termasuk `coverage_states` dari Setup (daftar kosong = semua status);
+- punya minimal satu IP aktif di `glpi_ipaddresses` (`mainitemtype`/`mainitems_id`);
+- dibatasi oleh entity aktif pengguna (`getEntitiesRestrictCriteria`).
+
+**Perangkat OpManager:** `glpi_plugin_opmanager_devices`. Data perangkat tidak terikat entity, jadi daftar yang hanya berisi perangkat ditampilkan ke semua pemegang hak monitoring.
+
+**Angka ringkas:**
+- jumlah perangkat OpManager;
+- terpasang ke aset (`matched`, termasuk pin manual);
+- tidak ada di GLPI (`unmatched`);
+- ambigu (`review`);
+- aset GLPI dalam lingkup;
+- yang dimonitor (ada perangkat yang `matched` ke aset itu);
+- yang tidak dimonitor;
+- cakupan % = dimonitor ÷ dalam lingkup.
+
+**Lima daftar tindak lanjut** (masing-masing bisa diekspor CSV):
+
+| Daftar | Isi |
+|---|---|
+| Tidak ada di GLPI | perangkat `unmatched` |
+| Tidak dimonitor | aset dalam lingkup tanpa perangkat `matched` |
+| Ambigu | perangkat `review` (link ke form perangkat untuk pin manual) |
+| Nama berbeda | perangkat `matched` lewat IP yang namanya (`display_name`, else `name`), setelah dinormalisasi (huruf kecil, tanpa domain, tanpa spasi tepi), tidak sama dengan nama aset |
+| Basi | perangkat yang `last_seen` lebih tua dari `last_device_sync` dikurangi `stale_warning_minutes` |
+
+**Penyaringan:**
+- Pilihan "Hanya rentang produksi" memakai rentang `production_addressings` (IP Addressing). Penyaringan berlaku untuk IP perangkat dan IP aset.
+- Halaman bisa juga disaring per kategori perangkat OpManager.
+
+**Daftar dan ekspor:**
+- Daftar dipaginasi (50 per halaman).
+- CSV berisi seluruh daftar, dipisah `;`, UTF-8 dengan BOM.
+
+### 15.2 Setup
+
+**Strip status**, selalu tampil di atas tab. Badge `ok`/`warn`/`error`:
+- *Sync perangkat:* error bila ada `last_device_sync_error`; warn bila kosong atau lebih tua dari `stale_warning_minutes`.
+- *Sync alarm:* error bila ada error; warn bila lebih tua dari 3× interval cron alarm.
+- *Webhook:* ok bila token tersimpan, warn bila belum.
+- *Ke OpManager:* error bila ada antrean `failed`, warn bila ada `pending`.
+- *API key:* error bila belum diisi.
+
+**Tab:**
+
+| Tab | Isi |
+|---|---|
+| Koneksi | URL, API key, SSL |
+| Pencocokan | mode, tipe aset, ambang data basi, status GLPI untuk Coverage |
+| Tiket | severity, rentang produksi, template, service user, entity, pola, relink, storm |
+| Filter | filter alarm |
+| Webhook | URL, header, token |
+| Ke OpManager | batas retry, status antrean |
+
+**Perilaku form:**
+- Tab yang terakhir dibuka diingat per browser (`sessionStorage`); kalau gagal, kembali ke tab pertama.
+- Satu form, satu tombol Save, nama field tidak berubah.
