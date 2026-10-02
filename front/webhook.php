@@ -59,15 +59,22 @@ $result = $receiver->handle(
     (string) file_get_contents('php://input', false, null, 0, Receiver::MAX_BODY + 1)
 );
 
-if ($result['status'] !== 200) {
-    \Toolbox::logInFile('opmanager', sprintf(
-        "Webhook: HTTP %d %s (alarm %s) from %s\n",
-        $result['status'],
-        $result['body']['message'] ?? '',
-        $result['body']['alarm_id'] ?? '-',
-        $_SERVER['REMOTE_ADDR'] ?? '?'
-    ));
+// Every answer is logged (one line each), so a working webhook is visible too (0.4.1).
+$summary = $result['body']['message'] ?? '';
+if ($summary === '' && isset($result['body']['stats']) && is_array($result['body']['stats'])) {
+    $done    = array_filter($result['body']['stats']);
+    $summary = 'processed: ' . ($done === [] ? 'no change' : implode(', ', array_map(fn ($k, $v) => "{$k} {$v}", array_keys($done), $done)));
 }
+if (isset($result['body']['received'])) {
+    $summary .= ' | received: ' . $result['body']['received'];
+}
+\Toolbox::logInFile('opmanager', sprintf(
+    "Webhook: HTTP %d %s (alarm %s) from %s\n",
+    $result['status'],
+    $summary,
+    $result['body']['alarm_id'] ?? '-',
+    $_SERVER['REMOTE_ADDR'] ?? '?'
+));
 http_response_code($result['status']);
 header('Content-Type: application/json');
 echo json_encode($result['body']);

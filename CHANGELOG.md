@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+- Webhook: `alarm_id` and `entity` accept any printable text up to 255 characters. Before, the
+  limit was letters, digits and `._:-` up to 64, which can refuse real interface entities
+  that contain `/`, spaces, or are longer.
+- Webhook: OpManager "Test Action" sends `$alarmid`/`$entity` unfilled. The plugin now answers
+  200 "test received" instead of 400, so the test passes, and no alarm is processed.
+- Webhook: every answer is logged, including successful ones (`Webhook: HTTP 200 processed: ...`).
+  A refused body is logged in part, so the log shows what OpManager actually sent.
+
 ## 0.4.0
 
 - GLPI → OpManager:
