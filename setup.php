@@ -66,6 +66,9 @@ function plugin_init_opmanager()
     $PLUGIN_HOOKS['item_add']['opmanager'] = [\ITILFollowup::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'followupAdded']];
     $PLUGIN_HOOKS['item_update']['opmanager'] = [\Ticket::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'ticketUpdated']];
 
+    // Native dashboard cards (v0.6.0). Provider strings are exploded by core (hub §4).
+    $PLUGIN_HOOKS['dashboard_cards']['opmanager'] = 'GlpiPlugin\\Opmanager\\Coverage\\Cards::cards';
+
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
     // Array-of-classes value is mandatory for a NEW sector (hub §4).

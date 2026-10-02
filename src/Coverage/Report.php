@@ -78,6 +78,26 @@ final class Report
         ];
     }
 
+    /**
+     * Device counts per OpManager category and match state (dashboard card, D28).
+     *
+     * @param list<array<string, mixed>> $devices
+     * @return array<string, array{matched: int, unmatched: int, review: int}>
+     */
+    public static function byCategory(array $devices): array
+    {
+        $out = [];
+        foreach ($devices as $d) {
+            $cat = (string) $d['category'] !== '' ? (string) $d['category'] : '-';
+            $out[$cat] ??= ['matched' => 0, 'unmatched' => 0, 'review' => 0];
+            if (isset($out[$cat][$d['match_state']])) {
+                $out[$cat][$d['match_state']]++;
+            }
+        }
+        ksort($out);
+        return $out;
+    }
+
     public static function normaliseName(string $name): string
     {
         $name = strtolower(trim($name));
