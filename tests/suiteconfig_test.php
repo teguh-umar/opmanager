@@ -28,6 +28,7 @@ namespace {
         public static function hidden($n, $o = []) { return "<input type='hidden' name='{$n}' value='" . ($o['value'] ?? '') . "'>"; }
         public static function submit($l, $o = []) { return "<button name='" . ($o['name'] ?? '') . "'>{$l}</button>"; }
         public static function closeForm($display = true) { echo '</form>'; }
+        public static function scriptBlock($s) { return "<script>{$s}</script>"; }
     }
     class Dropdown
     {
@@ -43,6 +44,7 @@ namespace {
     class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
+    class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
 }
@@ -64,6 +66,7 @@ namespace {
     require OPM_ROOT . '/src/Ticketing/AlarmFilter.php';
     require OPM_ROOT . '/src/Outbound/OutboxStore.php';
     require OPM_ROOT . '/src/Outbound/DbOutboxStore.php';
+    require OPM_ROOT . '/src/SetupStatus.php';
     require OPM_ROOT . '/src/SuiteConfig.php';
 
     use GlpiPlugin\Opmanager\RightDefinition as R;
@@ -85,6 +88,7 @@ namespace {
     check('read-only user sees no save button', !str_contains($html, "name='update'"));
     check('suite marker present when rendered in the tab', str_contains($html, "name='_from_pgnsuite'"));
     check('posts to own controller', str_contains($html, '/plugins/opmanager/front/config.php'));
+    check('tabs render for read-only', str_contains($html, 'nav-tabs') && str_contains($html, 'id="opm-tab-tickets-suite"'));
 
     $GLOBALS['RIGHTS'] = [R::CONFIG => READ | UPDATE];
     ob_start();
@@ -93,6 +97,15 @@ namespace {
     check('editor sees save button', str_contains($html, "name='update'"));
     check('standalone page has no suite marker', !str_contains($html, '_from_pgnsuite'));
     check('dropdown offers every match mode', substr_count($html, '<option value=') >= 5);
+
+    // Plan 4: status strip + tabs (D29)
+    foreach (SuiteConfig::TABS as $tab) {
+        check("tab {$tab} has a nav link and a pane", str_contains($html, 'href="#opm-tab-' . $tab . '"') && str_contains($html, 'id="opm-tab-' . $tab . '"'));
+    }
+    check('status strip shown above the tabs', strpos($html, 'opm-status') !== false && strpos($html, 'opm-status') < strpos($html, 'nav-tabs'));
+    check('one save button for all tabs', substr_count($html, "name='update'") === 1);
+    check('coverage states picker in the matching tab', (bool) preg_match('/id="opm-tab-matching".*?coverage_states\[\].*?id="opm-tab-tickets"/s', $html));
+    check('last open tab remembered per browser', str_contains($html, 'sessionStorage'));
 
     foreach (['ticket_severities[]', 'ticket_template', 'service_user', 'ticket_entity_default', 'ticket_title_pattern', 'ticket_content_pattern', 'relink_window_hours', 'storm_threshold', 'storm_window_minutes'] as $field) {
         check("ticketing field {$field} rendered", str_contains($html, "name='{$field}'") || str_contains($html, 'name="' . $field . '"'));
