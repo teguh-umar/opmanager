@@ -7,7 +7,7 @@
  * @license GPL-3.0-or-later
  */
 
-define('PLUGIN_OPMANAGER_VERSION', '0.5.0');
+define('PLUGIN_OPMANAGER_VERSION', '0.6.0');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
@@ -65,6 +65,9 @@ function plugin_init_opmanager()
     // GLPI -> OpManager (Plan 3): human actions only, decided in Outbound\Planner (D24).
     $PLUGIN_HOOKS['item_add']['opmanager'] = [\ITILFollowup::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'followupAdded']];
     $PLUGIN_HOOKS['item_update']['opmanager'] = [\Ticket::class => [\GlpiPlugin\Opmanager\Outbound\Hooks::class, 'ticketUpdated']];
+
+    // Native dashboard cards (v0.6.0). Provider strings are exploded by core (hub §4).
+    $PLUGIN_HOOKS['dashboard_cards']['opmanager'] = 'GlpiPlugin\\Opmanager\\Coverage\\Cards::cards';
 
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
