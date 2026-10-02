@@ -146,5 +146,12 @@ check('outbound retries 0 rejected', !array_key_exists('outbound_max_attempts', 
 $r = Config::sanitizeTicketing(['outbound_max_attempts' => '7'] + $t);
 check('outbound retries stored', $r['values']['outbound_max_attempts'] === '7');
 
+// Plan 4: GLPI states counted by the Coverage page (empty = all)
+check('coverage states default to all', Config::DEFAULTS['coverage_states'] === '[]');
+$r = Config::sanitize(['coverage_states' => ['3', 'x', '-1', '7', '3']] + $base, $allowed);
+check('coverage states stored as unique positive ids', json_decode($r['values']['coverage_states'], true) === [3, 7]);
+$r = Config::sanitize($base, $allowed);
+check('no coverage state posted = all', $r['values']['coverage_states'] === '[]');
+
 done();
 
