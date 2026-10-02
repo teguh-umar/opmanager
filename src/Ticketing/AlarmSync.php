@@ -106,8 +106,9 @@ final class AlarmSync
     /**
      * Any failure inside GLPI (a hook of another plugin, notifications, rules)
      * must not stop the poll or hide the problem (final review, 2026-09-30).
+     *
+     * @return bool true when the alarm was processed without error
      */
-    /** @return bool true when the alarm was processed without error */
     private function guarded(array $alarm, string $now, array &$stats, bool $requested): bool
     {
         try {
@@ -140,13 +141,16 @@ final class AlarmSync
             // first, and a Solved one reopens whatever the polls saw (Solved -> reopen,
             // Closed -> D30, open -> followup). Only a webhook does this; polls never do.
             $recurrence = $by_webhook && $requested && !$is_clear;
+            $restored   = false;
             if ($recurrence && $status === TicketGateway::TRASHED
                 && $this->tickets->mergedInto($existing['tickets_id']) === 0) {
                 $this->tickets->restore($existing['tickets_id']);
                 $stats['restored']++;
-                $status = $this->tickets->status($existing['tickets_id']);
+                $status    = $this->tickets->status($existing['tickets_id']);
+                $restored  = true;
             }
-            if ($recurrence && ($status === self::SOLVED_STATUS || $status === self::CLOSED_STATUS)) {
+            // A restored ticket that is still open gets its followup (§16.3, D31) like a recurrence.
+            if ($recurrence && ($restored || $status === self::SOLVED_STATUS || $status === self::CLOSED_STATUS)) {
                 $existing['state'] = 'cleared';
             }
             if ($status === null) {
@@ -298,7 +302,11 @@ final class AlarmSync
     {
         $current = $tid;
         for ($hop = 0; $hop <= self::MERGE_HOPS; $hop++) {
-            if ($this->tickets->status($current) !== TicketGateway::TRASHED) {
+            $status = $this->tickets->status($current);
+            if ($status === null) {
+                return $tid;        // §16.5: the target is gone, leave the alarm alone
+            }
+            if ($status !== TicketGateway::TRASHED) {
                 return $current;
             }
             $next = $this->tickets->mergedInto($current);
