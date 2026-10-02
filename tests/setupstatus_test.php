@@ -23,4 +23,8 @@ check('pending outbox warns, failed is an error', $lv(SetupStatus::items(['outbo
     && $lv(SetupStatus::items(['outbox_failed' => 1, 'outbox_pending' => 2] + $good, $now))['outbox'] === 'error');
 check('texts never empty', !in_array('', array_column(SetupStatus::items($good, $now), 'text'), true));
 
+// v1.1.0 (D32): without a token the webhook mode creates no ticket at all.
+check('webhook mode without token is an error', $lv(SetupStatus::items(['webhook_token_set' => false, 'ticket_source' => 'webhook'] + $good, $now))['webhook'] === 'error');
+check('rules mode without token stays a warning', $lv(SetupStatus::items(['webhook_token_set' => false, 'ticket_source' => 'rules'] + $good, $now))['webhook'] === 'warn');
+
 done();

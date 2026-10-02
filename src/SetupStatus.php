@@ -8,7 +8,7 @@ final class SetupStatus
     /**
      * @param array{api_key_set: bool, last_device_sync: string, last_device_sync_error: string, stale_minutes: int,
      *   last_alarm_sync: string, last_alarm_sync_error: string, alarm_minutes: int, webhook_token_set: bool,
-     *   outbox_pending: int, outbox_failed: int} $f
+     *   outbox_pending: int, outbox_failed: int, ticket_source?: string} $f
      * @return list<array{key: string, label: string, level: string, text: string}>
      */
     public static function items(array $f, string $now): array
@@ -33,10 +33,20 @@ final class SetupStatus
              'text' => $f['api_key_set'] ? __('stored', 'opmanager') : __('not set', 'opmanager')],
             $sync('devices', __('Device sync', 'opmanager'), $f['last_device_sync'], $f['last_device_sync_error'], $f['stale_minutes']),
             $sync('alarms', __('Alarm sync', 'opmanager'), $f['last_alarm_sync'], $f['last_alarm_sync_error'], 3 * $f['alarm_minutes']),
-            ['key' => 'webhook', 'label' => __('Webhook', 'opmanager'), 'level' => $f['webhook_token_set'] ? 'ok' : 'warn',
-             'text' => $f['webhook_token_set'] ? __('token stored', 'opmanager') : __('no token - disabled', 'opmanager')],
+            self::webhook($f['webhook_token_set'], (string) ($f['ticket_source'] ?? 'rules')),
             ['key' => 'outbox', 'label' => __('To OpManager', 'opmanager'), 'level' => $outbox,
              'text' => sprintf(__('%d waiting, %d given up', 'opmanager'), $f['outbox_pending'], $f['outbox_failed'])],
         ];
+    }
+
+    /** D32: in webhook mode a missing token means no new ticket at all. */
+    private static function webhook(bool $token_set, string $source): array
+    {
+        if ($token_set) {
+            return ['key' => 'webhook', 'label' => __('Webhook', 'opmanager'), 'level' => 'ok', 'text' => __('token stored', 'opmanager')];
+        }
+        return $source === 'webhook'
+            ? ['key' => 'webhook', 'label' => __('Webhook', 'opmanager'), 'level' => 'error', 'text' => __('no token - no new tickets', 'opmanager')]
+            : ['key' => 'webhook', 'label' => __('Webhook', 'opmanager'), 'level' => 'warn', 'text' => __('no token - disabled', 'opmanager')];
     }
 }
