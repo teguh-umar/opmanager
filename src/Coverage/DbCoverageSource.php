@@ -102,6 +102,38 @@ final class DbCoverageSource
         return $out;
     }
 
+    /** @return array<string, int> active alarms per severity label (dashboard card) */
+    public function alarmsBySeverity(): array
+    {
+        global $DB;
+
+        $out = [];
+        foreach ($DB->request([
+            'SELECT'  => ['severity_label', 'COUNT' => 'id AS cpt'],
+            'FROM'    => \GlpiPlugin\Opmanager\Alarm::getTable(),
+            'WHERE'   => ['state' => 'active'],
+            'GROUPBY' => 'severity_label',
+        ]) as $r) {
+            $out[(string) $r['severity_label']] = (int) $r['cpt'];
+        }
+        return $out;
+    }
+
+    /** Open tickets created from alarms, limited to the user's entities (dashboard card). */
+    public function openAlarmTickets(): int
+    {
+        global $DB;
+
+        $alarms = \GlpiPlugin\Opmanager\Alarm::getTable();
+        $row    = $DB->request([
+            'SELECT'     => ['COUNT DISTINCT' => 'glpi_tickets.id AS cpt'],
+            'FROM'       => $alarms,
+            'INNER JOIN' => ['glpi_tickets' => ['ON' => [$alarms => 'tickets_id', 'glpi_tickets' => 'id']]],
+            'WHERE'      => getEntitiesRestrictCriteria('glpi_tickets', '', '', true) + ['glpi_tickets.is_deleted' => 0, 'NOT' => ['glpi_tickets.status' => [5, 6]]],
+        ])->current();
+        return (int) ($row['cpt'] ?? 0);
+    }
+
     /** Dropdown names, memoised: one lookup per distinct id, not per asset. */
     private function name(string $table, int $id): string
     {
