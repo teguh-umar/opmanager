@@ -44,7 +44,7 @@ namespace {
     class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
-    class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple></select>"; } }
+    class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
 }
@@ -106,6 +106,11 @@ namespace {
     check('one save button for all tabs', substr_count($html, "name='update'") === 1);
     check('coverage states picker in the matching tab', (bool) preg_match('/id="opm-tab-matching".*?coverage_states\[\].*?id="opm-tab-tickets"/s', $html));
     check('last open tab remembered per browser', str_contains($html, 'sessionStorage'));
+    $GLOBALS['CFG_VALUES']['coverage_states'] = '[3,7]';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('stored coverage states shown selected (GLPI multiple reads value, not values)', str_contains($html, "data-value='[3,7]'"));
 
     foreach (['ticket_severities[]', 'ticket_template', 'service_user', 'ticket_entity_default', 'ticket_title_pattern', 'ticket_content_pattern', 'relink_window_hours', 'storm_threshold', 'storm_window_minutes'] as $field) {
         check("ticketing field {$field} rendered", str_contains($html, "name='{$field}'") || str_contains($html, 'name="' . $field . '"'));

@@ -164,7 +164,8 @@ final class SuiteConfig
         echo self::textRow('stale_warning_minutes' . $sfx, 'stale_warning_minutes', __('Warn when device data is older than (minutes)', 'opmanager'), Config::get('stale_warning_minutes'), 'number', $disabled);
 
         echo '<div class="mt-2"><label class="form-label">' . __s('Coverage page: GLPI statuses counted as in use (empty = all)', 'opmanager') . '</label>';
-        \State::dropdown(['name' => 'coverage_states[]', 'multiple' => true, 'values' => Config::coverageStates(), 'width' => '100%', 'readonly' => !$canedit]);
+        // 'value', not 'values': for multiple, Dropdown::show() copies value into values (11.0.5).
+        \State::dropdown(['name' => 'coverage_states[]', 'multiple' => true, 'value' => Config::coverageStates(), 'width' => '100%', 'readonly' => !$canedit]);
         echo '</div>';
 
         $last  = Config::get('last_device_sync');
