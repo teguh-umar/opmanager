@@ -2,7 +2,7 @@
 
 require __DIR__ . '/bootstrap.php';
 foreach (['OpManager/ClientException', 'OpManager/AlarmSource', 'Ticketing/AssetResolver', 'Ticketing/AlarmStore',
-          'Ticketing/TicketGateway', 'Ticketing/ProductionCheck', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmFilter', 'Ticketing/AlarmSync'] as $f) {
+          'Ticketing/TicketGateway', 'Ticketing/TicketRequestStore', 'Ticketing/ProductionCheck', 'Ticketing/Decision', 'Ticketing/Messages', 'Ticketing/AlarmFilter', 'Ticketing/AlarmSync'] as $f) {
     require OPM_ROOT . "/src/{$f}.php";
 }
 
@@ -13,6 +13,7 @@ use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\AssetResolver;
 use GlpiPlugin\Opmanager\Ticketing\ProductionCheck;
 use GlpiPlugin\Opmanager\Ticketing\TicketGateway;
+use GlpiPlugin\Opmanager\Ticketing\TicketRequestStore;
 
 final class Src implements AlarmSource
 {
@@ -41,6 +42,7 @@ final class Store implements AlarmStore
             'tickets_id' => 0, 'role' => '', 'pending' => 0, 'created_at' => '', 'last_followup_at' => ''];
         return $id;
     }
+    public function moveTicket(int $id, int $t): void { $this->rows[$id]['tickets_id'] = $t; }
     public function setTicket(int $id, int $t, string $role, string $now): void { $this->rows[$id]['tickets_id'] = $t; $this->rows[$id]['role'] = $role; $this->rows[$id]['pending'] = 0; $this->rows[$id]['created_at'] = $now; }
     public function markPending(int $id): void { $this->rows[$id]['pending'] = 1; }
     public function activeNotSeen(array $keys): array { return array_values(array_filter($this->rows, fn ($r) => $r['state'] === 'active' && !in_array($r['alarm_key'], $keys, true))); }
@@ -79,6 +81,15 @@ final class Assets implements AssetResolver
 {
     public function resolve(array $a): array { return ['devices_id' => 0, 'itemtype' => 'Computer', 'items_id' => 1]; }
 }
+final class Req implements TicketRequestStore
+{
+    public array $at = [];
+    public function record(string $k, string $e): void { $this->at[$k] = '2026-09-30 10:00:00'; }
+    public function keys(): array { return array_map('strval', array_keys($this->at)); }
+    public function delete(string $k): void { unset($this->at[$k]); }
+    public function purgeBefore(string $b): void { $this->at = array_filter($this->at, fn ($t) => $t >= $b); }
+}
+
 
 $al = static fn (string $key, int $sev, string $dev = 'sw1', string $msg = 'Device down', string $code = 'DOWN') => [
     'alarm_key' => $key, 'entity_key' => "E{$key}", 'device_name' => $dev, 'display_name' => $dev, 'ip_address' => '',
@@ -339,5 +350,80 @@ foreach (['10:20', '10:40', '11:00', '11:20'] as $i => $hm) {           // sever
     $sync->run("2026-09-30 {$hm}:00");
 }
 check('severity flapping on an open ticket: one followup per hour', $gw->log === ['followup 100', 'followup 100']);
+
+// v1.1.0 (D32): ticket source = OpManager webhook criteria.
+$wh = $cfg + ['ticket_source' => 'webhook'];
+$mkw = static function (array $active, ?Req $req = null) use ($wh) {
+    $s = new Src($active); $st = new Store(); $g = new Gw();
+    return [new AlarmSync($s, $st, $g, new Assets(), new Prod(), $wh, $req), $s, $st, $g];
+};
+
+[$sync, $src, $store, $gw] = $mkw([$al('n1', 1, 'srv1', 'CPU 99%')]);
+$stats = $sync->run($now);
+check('webhook mode: poll alone never creates a ticket', $gw->log === [] && $store->find('n1')['tickets_id'] === 0 && $stats['stored'] === 1);
+$sync->processOne($al('n1', 1, 'srv1', 'CPU 99%'), $now);
+check('webhook mode: webhook creates the ticket', $gw->log === ['create 100 n1']);
+$sync->processOne($al('n2', 2, 'np-lab', 'Device down'), $now);
+check('webhook mode: non-production webhook alarm is stored only', $store->find('n2')['tickets_id'] === 0);
+$sync->processOne($al('n3', 3, 'srv3'), $now);
+check('webhook mode: severity is not a condition', $store->find('n3')['tickets_id'] > 0);
+
+// Solved ticket: poll recurrence silent, webhook recurrence reopens.
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('s1', 1, 'srv-s'), $now);
+$src->active = [$al('s1', 5, 'srv-s')]; $sync->run('2026-09-30 10:10:00');     // Clear -> Solved
+$gw->log = [];
+foreach (['10:40', '11:10', '11:40'] as $i => $hm) { $src->active = [$al('s1', $i % 2 === 0 ? 1 : 5, 'srv-s')]; $sync->run("2026-09-30 {$hm}:00"); }
+check('webhook mode: poll flapping on a Solved ticket stays silent', $gw->log === []);
+$sync->processOne($al('s1', 1, 'srv-s'), '2026-09-30 12:00:00');
+check('webhook mode: webhook recurrence reopens the Solved ticket', $gw->log === ['reopen 100']);
+
+// Trash: poll leaves it, webhook restores; Solved -> reopen, Closed -> new linked ticket.
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('t1', 1, 'srv-t'), $now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->beforeTrash[100] = 5; $gw->log = [];
+$src->active = [$al('t1', 1, 'srv-t', 'Device down again')]; $sync->run('2026-09-30 11:30:00');
+check('webhook mode: poll leaves a trashed ticket alone', $gw->log === []);
+$sync->processOne($al('t1', 5, 'srv-t'), '2026-09-30 11:40:00');
+check('webhook mode: webhook Clear does not restore', $gw->log === [] && $gw->status[100] === TicketGateway::TRASHED);
+$sync->processOne($al('t1', 1, 'srv-t'), '2026-09-30 12:00:00');
+check('webhook mode: webhook restores and reopens a trashed Solved ticket', $gw->log === ['restore 100', 'reopen 100']);
+
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('t2', 1, 'srv-u'), $now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->beforeTrash[100] = 6; $gw->log = [];
+$sync->processOne($al('t2', 1, 'srv-u'), '2026-09-30 12:00:00');
+check('webhook mode: trashed Closed ticket is restored and a new linked ticket created',
+    $gw->log[0] === 'restore 100' && in_array('create 101 t2', $gw->log, true) && in_array('link 101->100', $gw->log, true) && $store->find('t2')['tickets_id'] === 101);
+
+// Deferred requests: consumed when processed, kept on failure, purged after 24 h.
+$req = new Req();
+$req->record('r1', 'Er1'); $req->record('r2', 'Er2');
+$req->at['old'] = '2026-09-29 09:00:00';
+[$sync, $src, $store, $gw] = $mkw([$al('r1', 1, 'srv-r'), $al('r2', 1, 'srv-q')], $req);
+$sync->run($now);
+check('webhook mode: deferred request creates the ticket on the next poll', $store->find('r1')['tickets_id'] > 0 && $store->find('r2')['tickets_id'] > 0);
+check('webhook mode: processed requests are deleted, old ones purged', $req->at === []);
+$req->record('r3', 'Er3'); $req->record('r4', 'Er4');
+[$sync, $src, $store, $gw] = $mkw([$al('r3', 1, 'srv-x'), $al('r4', 1, 'srv-x')], $req);
+$gw->throwOn = [100];                       // r3 creates 100; r4 joins 100 and its followup throws
+$sync->run($now);
+check('webhook mode: a request whose alarm failed is kept', isset($req->at['r4']) && !isset($req->at['r3']));
+
+// Merge: alarm follows the target; a chain longer than 5 is left alone.
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('m1', 1, 'srv-m', 'CPU 91'), $now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->merged[100] = 200; $gw->status[200] = 2; $gw->log = [];
+$src->active = [$al('m1', 2, 'srv-m', 'CPU 91')]; $sync->run('2026-09-30 11:30:00');
+check('merged ticket: alarm moves to the merge target', $store->find('m1')['tickets_id'] === 200 && $gw->log === ['followup 200']);
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('m2', 1, 'srv-n'), $now);
+for ($t = 100; $t < 106; $t++) { $gw->status[$t] = TicketGateway::TRASHED; $gw->merged[$t] = $t + 1; }
+$gw->status[106] = 2; $gw->log = [];
+$sync->processOne($al('m2', 2, 'srv-n'), '2026-09-30 11:30:00');
+check('merge chain longer than 5 is left alone', $store->find('m2')['tickets_id'] === 100 && $gw->log === []);
+$gw->merged = [100 => 101, 101 => 100]; $gw->status[101] = TicketGateway::TRASHED;
+$sync->processOne($al('m2', 1, 'srv-n'), '2026-09-30 12:30:00');
+check('merge cycle is left alone', $store->find('m2')['tickets_id'] === 100 && $gw->log === []);
 
 done();

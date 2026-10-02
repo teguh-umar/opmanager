@@ -99,6 +99,12 @@ final class DbAlarmStore implements AlarmStore
         ], ['id' => $id]);
     }
 
+    public function moveTicket(int $id, int $tickets_id): void
+    {
+        global $DB;
+        $DB->update(Alarm::getTable(), ['tickets_id' => $tickets_id], ['id' => $id]);
+    }
+
     public function markPending(int $id): void
     {
         global $DB;

@@ -18,12 +18,21 @@ final class AlarmSync
     /** GLPI Ticket::CLOSED. */
     private const CLOSED_STATUS = 6;
 
+    /** GLPI Ticket::SOLVED. */
+    private const SOLVED_STATUS = 5;
+
+    /** Deferred webhook requests older than this are dropped (spec §16.4). */
+    private const REQUEST_TTL_HOURS = 24;
+
+    /** Merge chains are followed at most this far (spec §16.5). */
+    private const MERGE_HOPS = 5;
+
     /** @var list<string> */
     private array $errors = [];
 
     private AlarmFilter $filter;
 
-    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, filter_mode?: string, filter_event_types?: list<string>, filter_keywords?: list<string>} $cfg */
+    /** @param array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, filter_mode?: string, filter_event_types?: list<string>, filter_keywords?: list<string>, ticket_source?: string} $cfg */
     public function __construct(
         private AlarmSource $source,
         private AlarmStore $store,
@@ -31,6 +40,7 @@ final class AlarmSync
         private AssetResolver $assets,
         private ProductionCheck $production,
         private array $cfg,
+        private ?TicketRequestStore $requests = null,
     ) {
         $this->filter = AlarmFilter::fromConfig($cfg);
     }
@@ -41,13 +51,19 @@ final class AlarmSync
         $active = $this->source->listActiveAlarms();
 
         $this->errors = [];
-        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
+        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'restored', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
         $stats['fetched'] = count($active);
+
+        // D32: webhooks answered 202 are processed now as if the webhook had come through.
+        $requested = array_fill_keys($this->requests?->keys() ?? [], true);
 
         $seen = [];
         foreach ($active as $alarm) {
-            $seen[] = $alarm['alarm_key'];
-            $this->guarded($alarm, $now, $stats);
+            $seen[]   = $alarm['alarm_key'];
+            $is_asked = isset($requested[$alarm['alarm_key']]);
+            if ($this->guarded($alarm, $now, $stats, $is_asked) && $is_asked) {
+                $this->requests->delete($alarm['alarm_key']);
+            }
         }
 
         foreach ($this->store->activeNotSeen($seen) as $row) {
@@ -57,9 +73,11 @@ final class AlarmSync
                 continue;
             }
             if ($current !== null && $current['alarm_key'] === $row['alarm_key'] && (int) $current['severity'] === self::CLEAR) {
-                $this->guarded($current, $now, $stats);
+                $this->guarded($current, $now, $stats, false);
             }
         }
+
+        $this->requests?->purgeBefore($this->since($now, self::REQUEST_TTL_HOURS * 3600));
 
         return $stats;
     }
@@ -73,9 +91,9 @@ final class AlarmSync
     public function processOne(array $alarm, string $now): array
     {
         $this->errors = [];
-        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
+        $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'restored', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
         $stats['fetched'] = 1;
-        $this->guarded($alarm, $now, $stats);
+        $this->guarded($alarm, $now, $stats, true);
         return $stats;
     }
 
@@ -89,30 +107,54 @@ final class AlarmSync
      * Any failure inside GLPI (a hook of another plugin, notifications, rules)
      * must not stop the poll or hide the problem (final review, 2026-09-30).
      */
-    private function guarded(array $alarm, string $now, array &$stats): void
+    /** @return bool true when the alarm was processed without error */
+    private function guarded(array $alarm, string $now, array &$stats, bool $requested): bool
     {
         try {
-            $this->process($alarm, $now, $stats);
+            $this->process($alarm, $now, $stats, $requested);
+            return true;
         } catch (\Throwable $e) {
             $stats['errors']++;
             $this->errors[] = sprintf('alarm %s: %s', $alarm['alarm_key'], $e->getMessage());
+            return false;
         }
     }
 
-    private function process(array $alarm, string $now, array &$stats): void
+    /** @param bool $requested the webhook asked for this alarm (directly or deferred, spec §16.2) */
+    private function process(array $alarm, string $now, array &$stats, bool $requested): void
     {
+        $by_webhook = ($this->cfg['ticket_source'] ?? 'rules') === 'webhook';
+        $is_clear   = (int) $alarm['severity'] === self::CLEAR;
+
         $existing = $this->store->find($alarm['alarm_key']);
         $status   = null;
         if ($existing !== null && $existing['tickets_id'] > 0) {
+            // §16.5: a merged-away ticket hands its alarms to the merge target.
+            $target = $this->followMerge($existing['tickets_id']);
+            if ($target !== $existing['tickets_id']) {
+                $this->store->moveTicket($existing['id'], $target);
+                $existing['tickets_id'] = $target;
+            }
             $status = $this->tickets->status($existing['tickets_id']);
+            // §16.3: a webhook for the active alarm is a recurrence: a trashed ticket is restored
+            // first, and a Solved one reopens whatever the polls saw (Solved -> reopen,
+            // Closed -> D30, open -> followup). Only a webhook does this; polls never do.
+            $recurrence = $by_webhook && $requested && !$is_clear;
+            if ($recurrence && $status === TicketGateway::TRASHED
+                && $this->tickets->mergedInto($existing['tickets_id']) === 0) {
+                $this->tickets->restore($existing['tickets_id']);
+                $stats['restored']++;
+                $status = $this->tickets->status($existing['tickets_id']);
+            }
+            if ($recurrence && ($status === self::SOLVED_STATUS || $status === self::CLOSED_STATUS)) {
+                $existing['state'] = 'cleared';
+            }
             if ($status === null) {
                 // Ticket purged from GLPI: treat the alarm as ticketless again.
                 // A trashed/merged ticket (TRASHED) stays bound - Decision leaves it alone.
                 $existing['tickets_id'] = 0;
             }
         }
-
-        $is_clear = (int) $alarm['severity'] === self::CLEAR;
 
         // D30 (v1.0.1): the same alarm id active again after its ticket was Closed is a new
         // alarm: severity, production and filter apply again, and a new ticket is linked
@@ -136,8 +178,12 @@ final class AlarmSync
         // (user decision 2026-09-30), minus the alarm filter (2026-10-01) for new tickets;
         // everything else is stored and shown only.
         $asset      = $this->assets->resolve($alarm);
-        $ticketable = in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true)
-            && ($has_ticket || $is_clear || ($this->filter->allows($alarm) && $this->production->isProduction($alarm, $asset)));
+        // D32: in webhook mode OpManager's webhook criteria pick the alarms; the plugin only
+        // checks the production ranges (D21). Mode rules: severities + filter + production.
+        $ticketable = $by_webhook
+            ? ($has_ticket || $is_clear || ($requested && $this->production->isProduction($alarm, $asset)))
+            : in_array((int) $alarm['severity'], $this->cfg['ticket_severities'], true)
+                && ($has_ticket || $is_clear || ($this->filter->allows($alarm) && $this->production->isProduction($alarm, $asset)));
 
         $decision = Decision::decide([
             'severity'             => (int) $alarm['severity'],
@@ -151,7 +197,7 @@ final class AlarmSync
             'storm_should_start'   => $candidate && $fresh
                 && Decision::shouldStartStorm($this->store->ownTicketsSince($window), $this->cfg['storm_threshold']),
             'message_followup_due' => $this->followupDue($existing, $now),
-            'reopen_allowed'       => $this->filter->allows($alarm),
+            'reopen_allowed'       => $by_webhook ? $requested : $this->filter->allows($alarm),
         ]);
 
         $id  = $this->store->save($alarm, $asset, $is_clear ? 'cleared' : 'active', $now);
@@ -245,6 +291,23 @@ final class AlarmSync
                 return;
             }
         }
+    }
+
+    /** The live end of a merge chain, or $tid itself when the chain is too long or loops. */
+    private function followMerge(int $tid): int
+    {
+        $current = $tid;
+        for ($hop = 0; $hop <= self::MERGE_HOPS; $hop++) {
+            if ($this->tickets->status($current) !== TicketGateway::TRASHED) {
+                return $current;
+            }
+            $next = $this->tickets->mergedInto($current);
+            if ($next <= 0) {
+                return $current;
+            }
+            $current = $next;
+        }
+        return $tid;
     }
 
     private function openTicketFor(string $device_name): int
