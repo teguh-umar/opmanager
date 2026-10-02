@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.6.0
+
+- **Coverage page** (OpManager → Coverage) compares OpManager devices with GLPI assets:
+  - KPI cards: coverage %, GLPI assets in scope, OpManager devices, Not in GLPI, Not monitored, Ambiguous;
+  - five follow-up lists: Not in GLPI, Not monitored, Ambiguous, Name differs, Stale;
+  - each list is paged, has links to the asset or device, and exports to CSV (Excel-ready);
+  - filters: production IP ranges only, and category.
+- **Native GLPI dashboard cards** (group "OpManager" under *Add widget*):
+  - coverage %, devices, not monitored and not in GLPI as big numbers;
+  - matching as a pie, devices by category as stacked bars, active alarms by severity, open alarm tickets;
+  - every card checks the monitoring right; figures are cached for 5 minutes per entity set.
+- **Setup redesigned:** a status strip (API key, device sync, alarm sync, webhook, queue to
+  OpManager), then tabs (Connection, Matching, Tickets, Alarm filter, Webhook, To OpManager).
+  The last tab used is remembered. All existing settings are unchanged.
+- New setting (Matching tab): the GLPI statuses counted as "in use" by the Coverage page and
+  the cards (empty = all).
+
 ## 0.5.0
 
 - A public followup by a GLPI technician now also **acknowledges** each still-active alarm of
