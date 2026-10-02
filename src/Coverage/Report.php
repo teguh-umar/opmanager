@@ -16,6 +16,16 @@ final class Report
         $categories = array_values(array_unique(array_filter(array_map(static fn ($d) => (string) $d['category'], $devices))));
         sort($categories);
 
+        // Whether an asset is monitored is decided from EVERY matched device, before the
+        // production and category filters: those narrow what is listed, they must never
+        // turn a monitored asset into "not monitored" (final review I3/I4).
+        $linked = [];
+        foreach ($devices as $d) {
+            if ($d['match_state'] === 'matched') {
+                $linked[$d['itemtype'] . '#' . $d['items_id']] = true;
+            }
+        }
+
         if ($opt['production_only']) {
             $devices = array_values(array_filter($devices, static fn ($d) => self::inRanges((string) $d['ip'], $opt['ranges'])));
             $assets  = array_values(array_filter($assets, static function ($a) use ($opt) {
@@ -33,11 +43,7 @@ final class Report
 
         $by_state = static fn (string $s) => array_values(array_filter($devices, static fn ($d) => $d['match_state'] === $s));
         $matched  = $by_state('matched');
-        $linked   = [];
-        foreach ($matched as $d) {
-            $linked[$d['itemtype'] . '#' . $d['items_id']] = true;
-        }
-        $names = [];
+        $names    = [];
         foreach ($assets as $a) {
             $names[$a['itemtype'] . '#' . $a['items_id']] = (string) $a['name'];
         }

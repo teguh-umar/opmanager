@@ -60,4 +60,13 @@ check('by category counts per match state', $bc === [
 ]);
 check('empty category shown as dash', array_keys(Report::byCategory([$dev(9, 'x', '1.1.1.1', 'unmatched', '', 0, '', '', '')])) === ['-']);
 
+$c = Report::build($devices, $assets, ['category' => 'Switch'] + $opt);
+check('category filter never makes linked assets look unmonitored', array_column($c['lists']['not_monitored'], 'items_id') === [30, 40] && $c['kpi']['coverage_pct'] === 50);
+$dual = Report::build(
+    [$dev(6, 'dual', '172.16.1.5', 'matched', 'Computer', 50, 'ip')],
+    [$asset('Computer', 50, 'dual', ['10.129.14.50', '172.16.1.5'])],
+    ['production_only' => true] + $opt
+);
+check('production filter: asset monitored on a non-production IP stays monitored', $dual['lists']['not_monitored'] === [] && $dual['kpi']['monitored'] === 1 && $dual['kpi']['coverage_pct'] === 100);
+
 done();
