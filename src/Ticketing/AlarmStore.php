@@ -12,6 +12,9 @@ interface AlarmStore
 
     public function setTicket(int $id, int $tickets_id, string $role, string $now): void;
 
+    /** The alarm's ticket was merged away: point it at the merge target (D32). */
+    public function moveTicket(int $id, int $tickets_id): void;
+
     public function markPending(int $id): void;
 
     /** @param string[] $alarm_keys @return list<array{id: int, alarm_key: string, entity_key: string}> */
