@@ -121,6 +121,13 @@ try {
 } catch (ClientException $e) {
     check('write error object throws', str_contains($e->getMessage(), 'AUTHORIZATION_FAILED'));
 }
+$writer->acknowledgeAlarm('IF-1.2_Poll');
+check('acknowledgeAlarm posts entity', $posted[2][0] === 'https://opm/api/json/alarm/acknowledgeAlarm' && $posted[2][3] === ['entity' => 'IF-1.2_Poll'] && ($posted[2][2]['apiKey'] ?? null) === 'S3CRET');
+// Already acknowledged (production probe 2026-10-02): ackMessage, no error -> not a failure.
+$again = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"ackMessage":"The selected Alarm is not Acknowledged","AlarmProperty":{}}']);
+$ok = true;
+try { $again->acknowledgeAlarm('E'); } catch (ClientException $e) { $ok = false; }
+check('repeat acknowledge is not a failure', $ok);
 check('client is an AlarmWriter', $writer instanceof \GlpiPlugin\Opmanager\OpManager\AlarmWriter);
 
 done();

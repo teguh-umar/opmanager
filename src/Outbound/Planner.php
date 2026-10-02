@@ -30,12 +30,14 @@ final class Planner
     }
 
     /**
-     * D25: public followups only.
+     * D25: public followups only. D27: each note is followed by an acknowledge, unless one
+     * is already waiting for that alarm.
      *
      * @param list<array{alarm_key: string, entity_key: string}> $active
+     * @param (callable(string): bool)|null $has_pending_ack
      * @return list<array{alarm_key: string, entity_key: string, tickets_id: int, users_id: int, action: string, payload: string}>
      */
-    public static function forFollowup(int $tickets_id, bool $is_private, string $text, string $user, array $active, int $users_id): array
+    public static function forFollowup(int $tickets_id, bool $is_private, string $text, string $user, array $active, int $users_id, ?callable $has_pending_ack = null): array
     {
         $text = trim($text);
         if ($is_private || $text === '') {
@@ -45,6 +47,9 @@ final class Planner
         $rows = [];
         foreach ($active as $alarm) {
             $rows[] = self::row($alarm, $tickets_id, $users_id, 'note', $note);
+            if ($has_pending_ack === null || !$has_pending_ack($alarm['alarm_key'])) {
+                $rows[] = self::row($alarm, $tickets_id, $users_id, 'ack', '');
+            }
         }
         return $rows;
     }

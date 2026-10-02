@@ -66,6 +66,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D24 | Arah keluar (Plan 3) hanya untuk tindakan **yang diketik pengguna GLPI** (teknisi, admin, dst.): solusi atau followup dari sesi login GLPI. Yang dibuat plugin sendiri (service user, cron AlarmSync, webhook, Solve otomatis saat alarm Clear) dan aksi otomatis GLPI (auto-close, rules) **tidak** dikirim ke OpManager. Ini juga mencegah putaran balik OpManager → GLPI → OpManager | 2026-10-01 |
 | D25 | Hanya followup **publik** yang dikirim sebagai catatan ke OpManager; followup privat tetap internal GLPI | 2026-10-01 |
 | D26 | Tiket di-Close oleh pengguna tanpa solusi yang diketik → alarm tetap di-**clear**, dengan catatan singkat otomatis *"Tiket #N ditutup oleh <user> di GLPI"* (tanpa isi solusi) sebagai jejak | 2026-10-01 |
+| D27 | Followup **publik** dari teknisi → selain `note`, alarm aktif tiket di-**acknowledge** di OpManager (tanda sudah ditangani). Ack tidak diantrekan lagi bila masih ada ack menunggu untuk alarm itu; ack ulang aman (bukan toggle, lihat §14). Aturan D24/D25 berlaku | 2026-10-02 |
 
 ## 3. Arsitektur
 
@@ -413,3 +414,8 @@ token tidak pernah ditampilkan ulang utuh.
   form body `entity`. Jawaban sukses **berbeda bentuk** dari `addNotes`:
   `{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{...}}`. Karena itu plugin
   menganggap gagal hanya jika ada objek `error`, bukan dengan mencari `result`.
+- **`acknowledgeAlarm` terverifikasi di produksi (probe 2026-10-02):** POST, key di header,
+  form body `entity`. Sukses: `{"ackMessage":"Alarm has been successfully Acknowledged",...}`.
+  Panggilan kedua pada alarm yang sudah di-ack: `{"ackMessage":"The selected Alarm is not
+  Acknowledged",...}` tanpa `error`, dan alarm **tetap** acknowledged (bukan toggle). Ack
+  tercatat atas nama pemilik API key; `listAlarms` memberi field `who` (siapa yang meng-ack).

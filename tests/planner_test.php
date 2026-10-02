@@ -15,7 +15,7 @@ $active = [['alarm_key' => '1', 'entity_key' => 'E1'], ['alarm_key' => '2', 'ent
 $none   = static fn (string $k) => false;
 
 $rows = P::forFollowup(55, false, 'Kabel diganti', 'budi', $active, 7);
-check('public followup: one note per active alarm', count($rows) === 2 && $rows[0]['action'] === 'note' && $rows[1]['entity_key'] === 'E2');
+check('public followup: note then acknowledge per active alarm (D27)', array_map(fn ($r) => $r['action'] . $r['alarm_key'], $rows) === ['note1', 'ack1', 'note2', 'ack2'] && $rows[3]['entity_key'] === 'E2' && $rows[1]['payload'] === '');
 check('followup note names ticket and user', $rows[0]['payload'] === 'GLPI tiket #55 - followup oleh budi: Kabel diganti' && $rows[0]['tickets_id'] === 55 && $rows[0]['users_id'] === 7);
 check('private followup not sent', P::forFollowup(55, true, 'internal', 'budi', $active, 7) === []);
 check('empty followup not sent', P::forFollowup(55, false, '   ', 'budi', $active, 7) === []);
@@ -38,5 +38,8 @@ check('note payload capped', strlen($long[0]['payload']) <= P::NOTE_MAX);
 check('own followup by a technician is original', P::isOriginalFollowup(7, 3, 0));
 check('followup authored by the service user is not sent', !P::isOriginalFollowup(3, 3, 0));
 check('followup copied by a merge is not sent', !P::isOriginalFollowup(7, 3, 12));
+
+$rows = P::forFollowup(55, false, 'lagi', 'budi', $active, 7, static fn (string $k) => $k === '1');
+check('acknowledge not queued twice while one is waiting', array_map(fn ($r) => $r['action'] . $r['alarm_key'], $rows) === ['note1', 'note2', 'ack2']);
 
 done();

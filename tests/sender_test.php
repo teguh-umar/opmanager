@@ -17,6 +17,7 @@ final class Box implements OutboxStore
     { $this->rows[$this->next] = ['id' => $this->next, 'alarm_key' => $key, 'entity_key' => "E{$key}", 'action' => $action, 'payload' => $payload, 'attempts' => $attempts, 'next_try_at' => $due, 'state' => 'pending', 'error' => '']; $this->next++; }
     public function enqueue(array $row, string $now): void {}
     public function hasClear(string $k): bool { return false; }
+    public function hasPendingAck(string $k): bool { return false; }
     public function pending(int $limit): array { return array_values(array_filter($this->rows, fn ($r) => $r['state'] === 'pending')); }
     public function markSent(int $id, string $now): void { $this->rows[$id]['state'] = 'sent'; }
     public function markRetry(int $id, int $a, string $n, string $e, string $now): void { $this->rows[$id]['attempts'] = $a; $this->rows[$id]['next_try_at'] = $n; $this->rows[$id]['error'] = $e; }
@@ -28,6 +29,7 @@ final class Opm implements AlarmWriter
     public array $calls = []; public array $down = [];
     public function addNote(string $e, string $n): void { $this->calls[] = "note {$e} {$n}"; if (in_array($e, $this->down, true)) { throw new ClientException('OpManager down'); } }
     public function clearAlarm(string $e): void { $this->calls[] = "clear {$e}"; if (in_array($e, $this->down, true)) { throw new ClientException('OpManager down'); } }
+    public function acknowledgeAlarm(string $e): void { $this->calls[] = "ack {$e}"; if (in_array($e, $this->down, true)) { throw new ClientException('OpManager down'); } }
 }
 
 $now = '2026-10-01 10:00:00';
@@ -66,5 +68,10 @@ $box = new Box(); $opm = new Opm(); $opm->down = ['E7', 'E8'];
 $box->add('7', 'note', 'a'); $box->add('8', 'note', 'b');
 (new Sender($box, $opm, 10))->run($now, 20, true);
 check('stop at first failure: one OpManager call only', $opm->calls === ['note E7 a'] && $box->rows[2]['attempts'] === 0);
+
+$box = new Box(); $opm = new Opm();
+$box->add('9', 'note', 'on it'); $box->add('9', 'ack');
+(new Sender($box, $opm, 10))->run($now);
+check('note then acknowledge sent', $opm->calls === ['note E9 on it', 'ack E9'] && $box->pending(50) === []);
 
 done();

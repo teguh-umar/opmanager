@@ -14,6 +14,7 @@ final class Client implements DeviceSource, AlarmSource, AlarmWriter
     public const ALARM_LIST_PATH  = '/api/json/alarm/listAlarms';
     public const ADD_NOTES_PATH   = '/api/json/alarm/addNotes';
     public const CLEAR_ALARM_PATH = '/api/json/alarm/clearAlarm';
+    public const ACK_ALARM_PATH   = '/api/json/alarm/acknowledgeAlarm';
 
     /** @var callable(string, array<string, string>, array<string, string>, ?array<string, string>): array{status: int, body: string} a non-null form means POST */
     private $transport;
@@ -61,6 +62,11 @@ final class Client implements DeviceSource, AlarmSource, AlarmWriter
     public function clearAlarm(string $entity): void
     {
         $this->post(self::CLEAR_ALARM_PATH, ['entity' => $entity]);
+    }
+
+    public function acknowledgeAlarm(string $entity): void
+    {
+        $this->post(self::ACK_ALARM_PATH, ['entity' => $entity]);
     }
 
     /**

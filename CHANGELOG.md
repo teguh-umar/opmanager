@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0
+
+- A public followup by a GLPI technician now also **acknowledges** each still-active alarm of
+  the ticket in OpManager, after the note (D27). This shows in OpManager that someone is on
+  it. Repeating an acknowledge is harmless, and no second one is queued while one is waiting.
+- The same rules apply as for notes: human actions only; private followups, merged copies and
+  the plugin's own followups are never sent.
+
 ## 0.4.1
 
 - Webhook: `alarm_id` and `entity` accept any printable text up to 255 characters. Before, the

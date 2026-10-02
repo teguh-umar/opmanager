@@ -36,13 +36,15 @@ final class Hooks
                 return;
             }
             $tickets_id = (int) $followup->fields['items_id'];
+            $store      = new DbOutboxStore();
             $rows = Planner::forFollowup(
                 $tickets_id,
                 (int) ($followup->fields['is_private'] ?? 0) === 1,
                 RichText::getTextFromHtml((string) ($followup->fields['content'] ?? '')),
                 (string) getUserName((int) $uid),
                 DbAlarmStore::activeForTicket($tickets_id),
-                (int) $uid
+                (int) $uid,
+                [$store, 'hasPendingAck']
             );
             self::queueAndSend($rows, $cfg);
         } catch (\Throwable $e) {
