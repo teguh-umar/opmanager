@@ -117,6 +117,21 @@ function plugin_opmanager_install()
         ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
     }
 
+    // v1.1.0 (D32): webhooks answered 202 - the next AlarmSync run treats them as webhook calls.
+    $table = 'glpi_plugin_opmanager_ticketrequests';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `alarm_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `entity_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `alarm_key` (`alarm_key`),
+            KEY `date_mod` (`date_mod`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
     Config::setDefaults();
 
     // setDefaults() never touches a stored value, so move an untouched old default

@@ -38,4 +38,9 @@ check('uninstall drops the new tables', str_contains((string) file_get_contents(
 
 check('alarms track last followup time', str_contains($src, '`last_followup_at` TIMESTAMP'));
 
+// v1.1.0 (D32): deferred webhook requests.
+check('install creates glpi_plugin_opmanager_ticketrequests', in_array('glpi_plugin_opmanager_ticketrequests', array_column($tables, 1), true));
+check('ticketrequests.alarm_key is UNIQUE', (bool) preg_match('/ticketrequests.*?UNIQUE KEY `alarm_key` \(`alarm_key`\)/s', $src));
+check('uninstall drops ticketrequests', str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_ticketrequests'));
+
 done();

@@ -7,7 +7,7 @@ function plugin_opmanager_uninstall()
 {
     global $DB;
 
-    foreach (['glpi_plugin_opmanager_outbox', 'glpi_plugin_opmanager_storms', 'glpi_plugin_opmanager_alarms', 'glpi_plugin_opmanager_devices'] as $table) {
+    foreach (['glpi_plugin_opmanager_ticketrequests', 'glpi_plugin_opmanager_outbox', 'glpi_plugin_opmanager_storms', 'glpi_plugin_opmanager_alarms', 'glpi_plugin_opmanager_devices'] as $table) {
         if ($DB->tableExists($table)) {
             $DB->doQuery("DROP TABLE `$table`");
         }
