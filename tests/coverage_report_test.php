@@ -53,4 +53,11 @@ check('csv has BOM and ; separator', str_starts_with($csv, "\xEF\xBB\xBF") && st
 check('formula cells neutralised', str_contains($csv, "\"'=HYPERLINK(\"\"x\"\")\"") && str_contains($csv, "'+1"));
 check('separator in a cell is quoted', str_contains($csv, '"a;b"'));
 
+$bc = Report::byCategory($devices);
+check('by category counts per match state', $bc === [
+    'Server' => ['matched' => 2, 'unmatched' => 1, 'review' => 1],
+    'Switch' => ['matched' => 0, 'unmatched' => 1, 'review' => 0],
+]);
+check('empty category shown as dash', array_keys(Report::byCategory([$dev(9, 'x', '1.1.1.1', 'unmatched', '', 0, '', '', '')])) === ['-']);
+
 done();

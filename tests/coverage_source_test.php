@@ -11,4 +11,7 @@ check('states filter only when states chosen', (bool) preg_match('/if \(\$states
 check('ips fetched in one query per itemtype', (bool) preg_match("/glpi_ipaddresses.*?'mainitemtype'\s*=>\s*\\\$itemtype.*?'mainitems_id'\s*=>\s*\\\$ids/s", $src));
 check('assets without an IP are left out', str_contains($src, 'if (!isset($ips['));
 
+check('active alarms grouped by severity', (bool) preg_match("/function alarmsBySeverity.*?'state' => 'active'.*?'GROUPBY'/s", $src));
+check('open alarm tickets are entity-scoped and exclude solved/closed/deleted', (bool) preg_match("/function openAlarmTickets.*?glpi_tickets.*?getEntitiesRestrictCriteria\('glpi_tickets'.*?'glpi_tickets.is_deleted' => 0.*?\[5, 6\]/s", $src));
+
 done();
