@@ -48,6 +48,11 @@ check('trashed ticket is left alone', $act(['message' => 'changed', 'existing' =
 check('trashed ticket: clear does nothing', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'active'), 'ticket_status' => D::TRASHED])['action'] === 'none');
 // Final review Important 7: message-only changes are throttled; severity changes are not.
 check('message-only change not yet due → nothing', $act(['message' => 'CPU 95 %', 'existing' => $ex(9, 'active'), 'ticket_status' => 2, 'message_followup_due' => false])['action'] === 'none');
-check('severity change always a followup', $act(['severity' => 3, 'existing' => $ex(9, 'active'), 'ticket_status' => 2, 'message_followup_due' => false])['action'] === 'followup');
+check('severity change when due is a followup', $act(['severity' => 3, 'existing' => $ex(9, 'active'), 'ticket_status' => 2])['action'] === 'followup');
+// D31 (v1.0.2): severity changes and "active again" are throttled too; a Solved ticket hears no Clear.
+check('severity change not yet due → nothing', $act(['severity' => 3, 'existing' => $ex(9, 'active'), 'ticket_status' => 2, 'message_followup_due' => false])['action'] === 'none');
+check('active again on open ticket not yet due → nothing', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 2, 'message_followup_due' => false])['action'] === 'none');
+check('clear on a Solved ticket → nothing', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'active'), 'ticket_status' => 5])['action'] === 'none');
+check('clear not yet due on open ticket still → clear (solve check)', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'active'), 'ticket_status' => 2, 'message_followup_due' => false])['action'] === 'clear');
 
 done();
