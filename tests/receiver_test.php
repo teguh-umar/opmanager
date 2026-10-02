@@ -1,13 +1,14 @@
 <?php
 
 require __DIR__ . '/bootstrap.php';
-foreach (['OpManager/ClientException', 'OpManager/AlarmSource', 'Ticketing/SyncLock', 'Webhook/Receiver'] as $f) {
+foreach (['OpManager/ClientException', 'OpManager/AlarmSource', 'Ticketing/SyncLock', 'Ticketing/TicketRequestStore', 'Webhook/Receiver'] as $f) {
     require OPM_ROOT . "/src/{$f}.php";
 }
 
 use GlpiPlugin\Opmanager\OpManager\AlarmSource;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
 use GlpiPlugin\Opmanager\Ticketing\SyncLock;
+use GlpiPlugin\Opmanager\Ticketing\TicketRequestStore;
 use GlpiPlugin\Opmanager\Webhook\Receiver;
 
 final class Src implements AlarmSource
@@ -24,6 +25,14 @@ final class Lock implements SyncLock
     public bool $free = true; public int $held = 0; public int $released = 0; public bool $holding = false;
     public function acquire(int $t): bool { if ($this->free) { $this->held++; $this->holding = true; } return $this->free; }
     public function release(): void { $this->released++; $this->holding = false; }
+}
+final class Req implements TicketRequestStore
+{
+    public array $rec = []; public bool $boom = false;
+    public function record(string $k, string $e): void { if ($this->boom) { throw new RuntimeException('db down'); } $this->rec[] = "{$k}@{$e}"; }
+    public function keys(): array { return []; }
+    public function delete(string $k): void {}
+    public function purgeBefore(string $b): void {}
 }
 
 $alarm  = ['alarm_key' => '10000003244', 'entity_key' => '10000024830', 'severity' => 1];
@@ -89,5 +98,20 @@ check('unfilled placeholders = test ping, 200, nothing processed', $res['status'
 // A refused body is echoed (truncated, control chars removed) so the log shows what arrived.
 $res = $r->handle('POST', 'secret-token', "{\"alarm_id\":\"1\",\n\"x\":1}");
 check('400 answer carries what was received, one line', $res['status'] === 400 && str_contains($res['body']['received'] ?? '', 'alarm_id') && !str_contains($res['body']['received'] ?? "\n", "\n"));
+
+// v1.1.0 (D32): every 202 leaves a request for the next AlarmSync run; 200/4xx do not.
+$req = new Req();
+$mkr = static fn ($answer) => new Receiver('secret-token', new Src($answer), new Lock(), $runner, $req);
+$mkr(null)->handle('POST', 'secret-token', $body);
+$mkr(new ClientException('down'))->handle('POST', 'secret-token', $body);
+$busy = new Lock(); $busy->free = false;
+(new Receiver('secret-token', new Src($alarm), $busy, $runner, $req))->handle('POST', 'secret-token', $body);
+check('each 202 records a request', $req->rec === array_fill(0, 3, '10000003244@10000024830'));
+$req->rec = [];
+$mkr($alarm)->handle('POST', 'secret-token', $body);
+$mkr($alarm)->handle('POST', 'nope', $body);
+check('200 and 401 record nothing', $req->rec === []);
+$req->boom = true;
+check('a failing request store still answers 202', $mkr(null)->handle('POST', 'secret-token', $body)['status'] === 202);
 
 done();
