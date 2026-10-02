@@ -14,6 +14,7 @@ check('solve skips solved/closed tickets', (bool) preg_match('/function solve.*?
 check('no raw writes to core ticket tables', !preg_match("/DB->(insert|update|delete)\(\s*'glpi_(tickets|itilfollowups|itilsolutions)/", $src));
 
 check('create reuses a ticket already carrying the alarm externalid', (bool) preg_match('/function create\(.*?externalid.*?->add\(/s', $src));
+check('create never reuses a closed ticket (D30)', (bool) preg_match("/function create\\(.*?'externalid' => \\\$externalid, 'is_deleted' => 0, 'NOT' => \\['status' => 6\\]/s", $src));
 check('create refuses when template mandatory fields are missing', (bool) preg_match('/function create\(.*?missingMandatory/s', $src));
 check('trashed ticket reported as TRASHED, not missing', str_contains($src, 'self::TRASHED'));
 

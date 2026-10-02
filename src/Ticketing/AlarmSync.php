@@ -15,6 +15,9 @@ final class AlarmSync
 {
     private const CLEAR = 5;
 
+    /** GLPI Ticket::CLOSED. */
+    private const CLOSED_STATUS = 6;
+
     /** @var list<string> */
     private array $errors = [];
 
@@ -109,8 +112,19 @@ final class AlarmSync
             }
         }
 
+        $is_clear = (int) $alarm['severity'] === self::CLEAR;
+
+        // D30 (v1.0.1): the same alarm id active again after its ticket was Closed is a new
+        // alarm: severity, production and filter apply again, and a new ticket is linked
+        // to the closed one. Before, the closed ticket was reopened on every flap.
+        $reborn_from = 0;
+        if ($existing !== null && $existing['tickets_id'] > 0 && $status === self::CLOSED_STATUS
+            && !$is_clear && $existing['state'] === 'cleared') {
+            $reborn_from            = $existing['tickets_id'];
+            $existing['tickets_id'] = 0;
+        }
+
         $has_ticket = $existing !== null && $existing['tickets_id'] > 0;
-        $is_clear   = (int) $alarm['severity'] === self::CLEAR;
         $window     = $this->since($now, $this->cfg['storm_window_minutes'] * 60);
         $candidate  = !$has_ticket && !$is_clear;
 
@@ -137,6 +151,7 @@ final class AlarmSync
             'storm_should_start'   => $candidate && $fresh
                 && Decision::shouldStartStorm($this->store->ownTicketsSince($window), $this->cfg['storm_threshold']),
             'message_followup_due' => $this->followupDue($existing, $now),
+            'reopen_allowed'       => $this->filter->allows($alarm),
         ]);
 
         $id  = $this->store->save($alarm, $asset, $is_clear ? 'cleared' : 'active', $now);
@@ -202,7 +217,14 @@ final class AlarmSync
                 }
                 $this->store->setTicket($id, $tid, 'own', $now);
                 $stats['created']++;
-                $this->relink($tid, $alarm, $now, $stats);
+                if ($reborn_from > 0) {
+                    // Its own closed ticket: the store row no longer holds that id, link it directly.
+                    $this->tickets->link($tid, $reborn_from);
+                    $this->tickets->followup($tid, Messages::related($reborn_from));
+                    $stats['linked']++;
+                } else {
+                    $this->relink($tid, $alarm, $now, $stats);
+                }
                 return;
         }
     }

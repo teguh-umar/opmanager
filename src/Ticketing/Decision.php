@@ -39,13 +39,21 @@ final class Decision
             if ($c['ticket_status'] === self::TRASHED) {
                 return self::out(self::NONE, $tid);
             }
+            // D30 (v1.0.1): a Closed ticket is final - never reopened, never followed up.
+            // AlarmSync turns a recurrence after Close into a new alarm before calling us.
+            if ($c['ticket_status'] === self::CLOSED) {
+                return self::out(self::NONE, $tid);
+            }
             $was_cleared = $existing['state'] === 'cleared';
             if ($c['is_clear']) {
                 return self::out($was_cleared ? self::NONE : self::CLEAR, $tid);
             }
             if ($was_cleared) {
-                $closed = in_array($c['ticket_status'], [self::SOLVED, self::CLOSED], true);
-                return self::out($closed ? self::REOPEN : self::FOLLOWUP, $tid);
+                if ($c['ticket_status'] === self::SOLVED) {
+                    // D30: a Solved ticket reopens only for an alarm the filter still allows.
+                    return self::out(($c['reopen_allowed'] ?? true) ? self::REOPEN : self::NONE, $tid);
+                }
+                return self::out(self::FOLLOWUP, $tid);
             }
             $severity_changed = $c['severity'] !== (int) $existing['severity'];
             $message_changed  = $c['message'] !== (string) $existing['message'];

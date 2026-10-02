@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.1
+
+- Fix (D30): a **Closed** ticket is no longer reopened, or followed up, when its OpManager
+  alarm comes back with the same alarm ID. Before, a flapping CPU threshold alarm reopened
+  closed tickets again and again.
+- A recurrence after Close is now treated as a **new alarm**: severity, production ranges
+  and the alarm filter apply. If it passes, it gets a new ticket linked to the closed one.
+  If it does not pass (for example CPU, when the filter is "Only: Device Down"), it is only
+  recorded.
+- A **Solved** ticket is reopened only if its alarm still passes the alarm filter.
+- Tip: to have GLPI close solved tickets at once, set the entity's *Automatic closing of
+  solved tickets after* to *Immediately*.
+
 ## 1.0.0
 
 First major release. It contains no new features; it is the production-verified state of 0.6.0

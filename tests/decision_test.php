@@ -26,7 +26,11 @@ check('severity drop is a followup', $act(['severity' => 3, 'ticketable' => fals
 check('clear on ticketed alarm → clear', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'active'), 'ticket_status' => 2]) === ['action' => 'clear', 'tickets_id' => 9]);
 check('clear seen twice → nothing', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'cleared'), 'ticket_status' => 5])['action'] === 'none');
 check('same alarm id active again on solved ticket → reopen', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 5])['action'] === 'reopen');
-check('same alarm id active again on closed ticket → reopen', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 6])['action'] === 'reopen');
+check('closed ticket is never touched: recurrence (D30)', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 6])['action'] === 'none');
+check('closed ticket is never touched: clear', $act(['is_clear' => true, 'severity' => 5, 'existing' => $ex(9, 'active'), 'ticket_status' => 6])['action'] === 'none');
+check('closed ticket is never touched: message change', $act(['message' => 'CPU 99%', 'existing' => $ex(9, 'active'), 'ticket_status' => 6])['action'] === 'none');
+check('solved ticket: filtered alarm does not reopen (D30)', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 5, 'reopen_allowed' => false])['action'] === 'none');
+check('solved ticket: allowed alarm reopens', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 5, 'reopen_allowed' => true])['action'] === 'reopen');
 check('active again, ticket still open → followup', $act(['existing' => $ex(9, 'cleared'), 'ticket_status' => 2])['action'] === 'followup');
 check('technician solved while alarm active → no reopen', $act(['existing' => $ex(9, 'active'), 'ticket_status' => 5])['action'] === 'none');
 check('severity rise creates ticket', $act(['existing' => $ex(0, 'active', 3)])['action'] === 'create');
