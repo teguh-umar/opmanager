@@ -263,4 +263,43 @@ $sync = new AlarmSync(new Src([$typed('h1', 1, 'CPU Utilization'), $typed('h2', 
 $sync->run($now);
 check('include mode: only listed alarms get tickets', $store->find('h1')['tickets_id'] === 0 && $store->find('h2')['tickets_id'] > 0);
 
+// v1.0.1 (D30): a Closed ticket is never reopened; a recurrence is a new alarm again.
+$excl = $cfg + ['filter_mode' => 'exclude', 'filter_event_types' => ['Threshold Down'], 'filter_keywords' => []];
+$cpu  = static fn (int $sev) => ['event_type' => 'Threshold Down'] + $al('c1', $sev, 'dbserver2', 'CPU 92%', 'CPU');
+$dd   = static fn (int $sev) => ['event_type' => 'Device Down'] + $al('d1', $sev, 'sw9', 'Device down', 'DOWN');
+$s = new Src([$cpu(1)]); $store = new Store(); $gw = new Gw();
+(new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $cfg))->run($now);   // ticketed before the filter existed
+$old = $store->find('c1')['tickets_id'];
+$gw->status[$old] = 6; $gw->log = [];
+$sync = new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $excl);
+$s->active = [$cpu(5)];
+$sync->run($now);
+check('clear on a closed ticket: no followup', $gw->log === []);
+$s->active = [$cpu(1)];
+$sync->run($now);
+check('filtered recurrence after Close: no reopen, no new ticket', $gw->log === [] && $gw->status[$old] === 6);
+$s->active = [$cpu(5)]; $sync->run($now); $s->active = [$cpu(1)]; $sync->run($now);
+check('flapping filtered alarm stays silent', $gw->log === []);
+
+$s = new Src([$dd(1)]); $store = new Store(); $gw = new Gw();
+$sync = new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $excl);
+$sync->run($now);
+$old = $store->find('d1')['tickets_id'];
+$gw->status[$old] = 6; $gw->log = [];
+$s->active = [$dd(5)]; $sync->run($now);
+$s->active = [$dd(1)]; $sync->run($now);
+$new = $store->find('d1')['tickets_id'];
+check('allowed recurrence after Close: new ticket linked to the closed one', $new !== $old && in_array("create {$new} d1", $gw->log, true)
+    && in_array("link {$new}->{$old}", $gw->log, true) && !in_array("reopen {$old}", $gw->log, true));
+
+$s = new Src([$cpu(1)]); $store = new Store(); $gw = new Gw();
+(new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $cfg))->run($now);
+$old = $store->find('c1')['tickets_id'];
+$gw->status[$old] = 5; $gw->log = [];
+$sync = new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $excl);
+$s->active = [$cpu(5)]; $sync->run($now);
+$gw->log = [];
+$s->active = [$cpu(1)]; $sync->run($now);
+check('filtered recurrence on a Solved ticket: no reopen', $gw->log === []);
+
 done();
