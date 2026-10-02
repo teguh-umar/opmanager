@@ -52,6 +52,9 @@ final class Config
     /** Alarm filter modes; same list as Ticketing\AlarmFilter::MODES (first = default). */
     public const FILTER_MODES = ['exclude', 'include'];
 
+    /** D32: who decides that an alarm becomes a ticket (first = default, also on upgrade). */
+    public const TICKET_SOURCES = ['webhook', 'rules'];
+
     public const FILTER_KEYWORDS_MAX = 2000;
 
     public const DEFAULTS = [
@@ -66,6 +69,7 @@ final class Config
         'last_device_sync'       => '',
         'last_device_sync_error' => '',
         'ticket_severities'           => '[1]',
+        'ticket_source'               => 'webhook',
         'ticket_template'             => '0',
         'ticket_title_pattern'        => self::DEFAULT_TITLE_PATTERN,
         'ticket_content_pattern'      => self::DEFAULT_CONTENT_PATTERN,
@@ -214,6 +218,9 @@ final class Config
         $values = [];
         $errors = [];
 
+        $source = (string) ($post['ticket_source'] ?? '');
+        $values['ticket_source'] = in_array($source, self::TICKET_SOURCES, true) ? $source : self::TICKET_SOURCES[0];
+
         $sev = array_values(array_intersect(
             array_map('intval', (array) ($post['ticket_severities'] ?? [])),
             array_keys(self::SEVERITIES)
@@ -278,12 +285,13 @@ final class Config
         return max($window, self::ALARM_SYNC_MINUTES + 1);
     }
 
-    /** @return array{ticket_severities: list<int>, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, service_user: int, template_id: int, title_pattern: string, content_pattern: string, entity_default: int, use_ipnetwork: bool} */
+    /** @return array{ticket_severities: list<int>, ticket_source: string, relink_window_hours: int, storm_threshold: int, storm_window_minutes: int, storm_idle_minutes: int, service_user: int, template_id: int, title_pattern: string, content_pattern: string, entity_default: int, use_ipnetwork: bool} */
     public static function ticketingConfig(): array
     {
         $sev = json_decode(self::get('ticket_severities'), true);
         return [
             'ticket_severities'    => is_array($sev) ? array_values(array_map('intval', $sev)) : [1],
+            'ticket_source'        => in_array(self::get('ticket_source'), self::TICKET_SOURCES, true) ? self::get('ticket_source') : self::TICKET_SOURCES[0],
             'relink_window_hours'  => (int) self::get('relink_window_hours'),
             'storm_threshold'      => (int) self::get('storm_threshold'),
             'storm_window_minutes' => max(1, (int) self::get('storm_window_minutes')),
