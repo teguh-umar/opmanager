@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.0
+
+First major release. It contains no new features; it is the production-verified state of 0.6.0
+on VM-HQ-GLPI (user, 2026-10-02):
+- OpManager device sync and matching to GLPI assets, with a Monitoring section on the assets;
+- tickets from Critical alarms on production IP ranges, with an alarm filter;
+- an OpManager webhook receiver;
+- GLPI → OpManager: notes, acknowledge and clear for actions typed by technicians;
+- the Coverage page and native dashboard cards;
+- the Setup page as a status strip plus tabs.
+
+A `/code-review low` pass over the whole history (`d4b7871..0.6.0`) reported no findings.
+
 ## 0.6.0
 
 - **Coverage page** (OpManager → Coverage) compares OpManager devices with GLPI assets:
