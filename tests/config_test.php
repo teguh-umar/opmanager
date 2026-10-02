@@ -153,5 +153,10 @@ check('coverage states stored as unique positive ids', json_decode($r['values'][
 $r = Config::sanitize($base, $allowed);
 check('no coverage state posted = all', $r['values']['coverage_states'] === '[]');
 
+// v1.1.0 (D32): ticket source.
+check('ticket source defaults to webhook', Config::DEFAULTS['ticket_source'] === 'webhook' && Config::TICKET_SOURCES[0] === 'webhook');
+check('ticket source rules accepted', Config::sanitizeTicketing(['ticket_source' => 'rules'] + $t)['values']['ticket_source'] === 'rules');
+check('unknown ticket source falls back to webhook', Config::sanitizeTicketing(['ticket_source' => 'x'] + $t)['values']['ticket_source'] === 'webhook');
+
 done();
 
