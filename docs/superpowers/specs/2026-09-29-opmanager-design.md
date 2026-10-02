@@ -71,6 +71,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D29 | Setup OpManager ditata ulang: **strip status** (sync perangkat, sync alarm, webhook, antrean) selalu tampil + **tab** per bagian, satu tombol Save. Nama field form tidak berubah, jadi `front/config.php` tetap. Lihat §15 | 2026-10-02 |
 | D30 | Mengubah D6. Tiket **Closed** bersifat final: tidak pernah dibuka kembali dan tidak diberi followup oleh plugin. Bila Alarm ID yang sama aktif lagi setelah tiketnya Closed, alarm itu dinilai sebagai **alarm baru** (severity, rentang produksi, filter); kalau lolos, dibuat tiket baru yang ditautkan ke tiket Closed itu. Tiket **Solved** dibuka kembali hanya bila alarmnya masih lolos filter. Pemicu: alarm threshold CPU naik-turun membuka kembali tiket Closed berulang kali (#2609300004/05/09) | 2026-10-02 |
 | D31 | Mengubah D22. Pada tiket yang masih terbuka, **setiap** followup plugin untuk satu alarm (perubahan severity, perubahan pesan, aktif lagi, Clear) paling banyak satu per jam; Clear yang tertahan tetap menyelesaikan (Solve) tiket bila semua alarmnya Clear. Tiket **Solved** tidak diberi followup Clear lagi. Pemicu: alarm CPU yang naik-turun pada tiket Solved mengirim followup "is Clear" tiap ~30 menit (#2610010002, #2609300003, #2609300009) | 2026-10-03 |
+| D32 | Mengubah D21/D23 (v1.1.0). Setup → *Sumber tiket*: **Kriteria webhook OpManager** (default, juga saat upgrade) atau **Aturan plugin** (perilaku v1.0.2). Pada mode webhook, alarm hanya menjadi tiket, dibuka kembali, atau memulihkan tiket dari trash bila **OpManager mengirim webhook** untuk alarm itu dan IP-nya di rentang produksi; severity dan filter plugin tidak dipakai. Polling tidak pernah membuat, membuka kembali, atau memulihkan tiket, tetapi tetap menyimpan alarm dan meneruskan followup/Clear/Solve tiket yang ada. Webhook yang tertunda (202) dicatat sebagai permintaan tiket dan diproses cron berikutnya. Tiket di trash (bukan hasil merge) dipulihkan lalu mengikuti statusnya (Solved → dibuka kembali; Closed → D30). Alarm pada tiket hasil merge pindah ke tiket tujuan merge (kedua mode). Detail §16. Pemicu: tiket CPU tetap muncul; user ingin logika tiket mengikuti kriteria webhook OpManager | 2026-10-03 |
 
 ## 3. Arsitektur
 
@@ -488,3 +489,78 @@ token tidak pernah ditampilkan ulang utuh.
 **Perilaku form:**
 - Tab yang terakhir dibuka diingat per browser (`sessionStorage`); kalau gagal, kembali ke tab pertama.
 - Satu form, satu tombol Save, nama field tidak berubah.
+
+## 16. Sumber tiket: kriteria webhook OpManager (v1.1.0, D32)
+
+### 16.1 Pengaturan
+
+`ticket_source` di config plugin: `webhook` (default instalasi baru **dan** upgrade) atau
+`rules`. Di Setup → tab Tiket sebagai pilihan *Sumber tiket*. Pada mode `webhook`,
+severity tiket (tab Tiket) dan seluruh tab Filter tampil nonaktif dengan catatan "dipakai
+hanya pada mode Aturan plugin"; nilainya tetap tersimpan. Mode `rules` = perilaku v1.0.2
+tanpa perubahan (kecuali §16.5, berlaku di kedua mode).
+
+### 16.2 Alarm "diminta webhook"
+
+Sebuah alarm **diminta webhook** dalam satu pemrosesan bila:
+- diproses lewat receiver webhook (`AlarmSync::processOne`), atau
+- diproses cron (`AlarmSync::run`) dan `alarm_key`-nya ada di tabel permintaan (§16.4).
+
+Di mode `rules`, tanda ini diabaikan.
+
+### 16.3 Keputusan pada mode webhook
+
+Aturan §7, D30 dan D31 tetap berlaku; yang berubah hanya syarat berikut:
+
+| Situasi | Syarat baru | Hasil |
+|---|---|---|
+| Alarm aktif tanpa tiket (termasuk kemunculan lagi setelah Closed, D30) | diminta webhook **dan** produksi (D21) | Tiket baru / gabung perangkat / storm seperti §7. Tidak memenuhi → simpan saja |
+| Alarm aktif lagi, tiket **Solved** | diminta webhook | Dibuka kembali. Tidak diminta → tidak ada aksi |
+| Alarm aktif lagi, tiket **di trash** (bukan merge) | diminta webhook | Tiket dipulihkan (`restore`), lalu dinilai ulang dengan statusnya: Solved → dibuka kembali; Closed → D30 (tiket baru ditautkan ke tiket yang dipulihkan); masih terbuka → followup (D31). Tidak diminta → tidak ada aksi |
+| Clear, perubahan severity/pesan pada tiket terbuka | tidak berubah | Followup/Solve seperti D31; boleh dari poll maupun webhook |
+| Tiket Closed, alarm Clear atau berubah | tidak berubah | Tidak ada aksi (D30) |
+
+Severity tidak menjadi syarat: kriteria profil webhook di OpManager yang menentukan jenis
+dan severity. Pada mode `rules`, tiket di trash tetap dibiarkan seperti sebelumnya.
+
+### 16.4 Permintaan tiket tertunda
+
+Tabel baru **`glpi_plugin_opmanager_ticketrequests`**: `id INT UNSIGNED`, `alarm_key`
+VARCHAR(255) UNIQUE, `entity_key` VARCHAR(255), `date_creation`, `date_mod` TIMESTAMP.
+
+- Receiver mencatat (upsert) permintaan setiap kali menjawab **202** dengan `alarm_id`
+  dan `entity` yang valid: sync terkunci, API OpManager gagal, atau alarm belum terbaca di
+  entity itu. Jawaban 200/4xx/5xx tidak mencatat apa pun.
+- `AlarmSync::run` membaca permintaan sebelum loop. Alarm aktif yang ada di daftar
+  diproses sebagai *diminta webhook*; permintaannya dihapus setelah alarm itu diproses
+  tanpa error (apa pun keputusannya).
+- Permintaan yang lebih tua dari 24 jam dihapus di akhir `run`.
+- Pada mode `rules` tabel tetap diisi dan dibersihkan, tetapi tidak berpengaruh.
+
+### 16.5 Tiket hasil merge (kedua mode)
+
+`Ticket::merge()` membuang tiket sumber ke trash dan membuat `Ticket_Ticket`
+`tickets_id_1 = sumber`, `tickets_id_2 = tujuan`, `link = SON_OF`. Gateway membedakannya:
+tiket di trash **dengan** link itu = *merged*. Alarm yang tiketnya merged dipindah ke
+tiket tujuan (`tickets_id` di tabel alarm diperbarui), lalu dinilai dengan status tiket
+tujuan. Rantai merge diikuti paling banyak 5 langkah; lebih dari itu, atau tujuan tidak
+ada, alarm dibiarkan (seperti TRASHED sekarang).
+
+### 16.6 Setup dan status
+
+- Strip status *Webhook*: **error** bila mode `webhook` dan token kosong ("tidak akan ada
+  tiket baru"); selain itu seperti §15.2.
+- Peringatan cron "rentang produksi kosong" tetap berlaku di kedua mode.
+
+### 16.7 Pengujian
+
+- Mode webhook: webhook Device Down produksi → tiket; non-produksi → simpan saja.
+- Mode webhook: CPU naik-turun lewat poll saja → tidak ada tiket, reopen, maupun followup.
+- Mode webhook: tiket Solved + poll aktif lagi → tidak ada aksi; + webhook → dibuka kembali.
+- Mode webhook: tiket di trash + webhook → restore lalu reopen (Solved) atau tiket baru
+  bertaut (Closed); + poll saja → tidak ada aksi.
+- Receiver 202 → permintaan tercatat → cron berikutnya membuat tiket, permintaan terhapus;
+  permintaan > 24 jam terhapus.
+- Merge: alarm pindah ke tiket tujuan; rantai > 5 dibiarkan.
+- Mode `rules`: seluruh test v1.0.2 lulus tanpa perubahan.
+- Migrasi: tabel baru + `ticket_source = webhook` pada instalasi baru dan upgrade.
