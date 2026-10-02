@@ -17,6 +17,7 @@ use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
 use GlpiPlugin\Opmanager\Ticketing\DbDeviceIndex;
 use GlpiPlugin\Opmanager\Ticketing\DbSyncLock;
+use GlpiPlugin\Opmanager\Ticketing\DbTicketRequestStore;
 use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
 use GlpiPlugin\Opmanager\Ticketing\RangeProductionCheck;
 use GlpiPlugin\Opmanager\Webhook\Receiver;
@@ -50,7 +51,8 @@ $receiver = new Receiver(
             \Toolbox::logInFile('opmanager', 'Webhook: ' . $error . "\n");
         }
         return $stats;
-    }
+    },
+    new DbTicketRequestStore()
 );
 
 $result = $receiver->handle(

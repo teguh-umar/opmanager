@@ -15,6 +15,7 @@ use GlpiPlugin\Opmanager\Ticketing\AlarmSync;
 use GlpiPlugin\Opmanager\Ticketing\DbAlarmStore;
 use GlpiPlugin\Opmanager\Ticketing\DbDeviceIndex;
 use GlpiPlugin\Opmanager\Ticketing\DbSyncLock;
+use GlpiPlugin\Opmanager\Ticketing\DbTicketRequestStore;
 use GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway;
 use GlpiPlugin\Opmanager\Ticketing\RangeProductionCheck;
 
@@ -96,7 +97,8 @@ final class Cron extends \CommonGLPI
                 new GlpiTicketGateway($cfg),
                 new AlarmAssetResolver(new DbDeviceIndex(), new Matcher(new DbAssetLookup(Config::assetItemtypes())), Config::get('match_mode')),
                 new RangeProductionCheck($ranges, [AddressingRanges::class, 'assetIps']),
-                $cfg
+                $cfg,
+                new DbTicketRequestStore()
             );
             $lock = new DbSyncLock();
             if (!$lock->acquire(60)) {
@@ -118,7 +120,7 @@ final class Cron extends \CommonGLPI
         // Keep every problem of this run visible in Setup (hub §4: a run that half
         // failed must not look successful).
         $problems = [];
-        if ($ranges === [] && $cfg['ticket_severities'] !== []) {
+        if ($ranges === [] && ($cfg['ticket_source'] === 'webhook' || $cfg['ticket_severities'] !== [])) {
             $problems[] = 'no production IP range selected in Setup: alarms are stored but no ticket is created';
         }
         if ($stats['pending'] > 0) {
