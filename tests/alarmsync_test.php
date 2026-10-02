@@ -396,6 +396,12 @@ $sync->processOne($al('t2', 1, 'srv-u'), '2026-09-30 12:00:00');
 check('webhook mode: trashed Closed ticket is restored and a new linked ticket created',
     $gw->log[0] === 'restore 100' && in_array('create 101 t2', $gw->log, true) && in_array('link 101->100', $gw->log, true) && $store->find('t2')['tickets_id'] === 101);
 
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('t3', 1, 'srv-o'), $now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->beforeTrash[100] = 2; $gw->log = [];
+$sync->processOne($al('t3', 1, 'srv-o'), '2026-09-30 12:00:00');
+check('webhook mode: restored open ticket gets a followup', $gw->log === ['restore 100', 'followup 100']);
+
 // Deferred requests: consumed when processed, kept on failure, purged after 24 h.
 $req = new Req();
 $req->record('r1', 'Er1'); $req->record('r2', 'Er2');
@@ -425,5 +431,11 @@ check('merge chain longer than 5 is left alone', $store->find('m2')['tickets_id'
 $gw->merged = [100 => 101, 101 => 100]; $gw->status[101] = TicketGateway::TRASHED;
 $sync->processOne($al('m2', 1, 'srv-n'), '2026-09-30 12:30:00');
 check('merge cycle is left alone', $store->find('m2')['tickets_id'] === 100 && $gw->log === []);
+
+[$sync, $src, $store, $gw] = $mkw([]);
+$sync->processOne($al('m3', 1, 'srv-p'), $now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->merged[100] = 300; $gw->log = [];
+$sync->processOne($al('m3', 2, 'srv-p'), '2026-09-30 11:30:00');
+check('merge target purged: alarm stays on the old ticket', $store->find('m3')['tickets_id'] === 100 && $gw->log === []);
 
 done();
