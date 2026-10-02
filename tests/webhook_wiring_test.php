@@ -20,4 +20,8 @@ check('token is not put in a toast message', !preg_match('/addMessageAfterRedire
 
 check('token regeneration needs config UPDATE', (bool) preg_match('/generate_webhook_token.*?checkRight\(RightDefinition::CONFIG, UPDATE\)/s', $cfg));
 
+$cron = (string) file_get_contents(OPM_ROOT . '/src/Cron.php');
+check('webhook passes the request store to the receiver', str_contains($hook, 'new DbTicketRequestStore()'));
+check('cron AlarmSync consumes deferred requests', str_contains($cron, 'new DbTicketRequestStore()'));
+
 done();

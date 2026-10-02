@@ -5,6 +5,7 @@ namespace GlpiPlugin\Opmanager\Webhook;
 use GlpiPlugin\Opmanager\OpManager\AlarmSource;
 use GlpiPlugin\Opmanager\OpManager\ClientException;
 use GlpiPlugin\Opmanager\Ticketing\SyncLock;
+use GlpiPlugin\Opmanager\Ticketing\TicketRequestStore;
 
 /**
  * OpManager "Invoke a Webhook" receiver. The payload is only a trigger: the alarm itself is
@@ -33,7 +34,8 @@ final class Receiver
         private string $token,
         private AlarmSource $source,
         private SyncLock $lock,
-        callable $runner
+        callable $runner,
+        private ?TicketRequestStore $requests = null
     ) {
         $this->runner = $runner;
     }
@@ -67,16 +69,16 @@ final class Receiver
         // Fetch under the lock: a snapshot read before waiting could be older than one
         // another request processes meanwhile (flapping alarm -> spurious reopen).
         if (!$this->lock->acquire(self::LOCK_WAIT_SECONDS)) {
-            return self::reply(202, 'alarm sync busy; deferred to AlarmSync cron', $alarm_id);
+            return $this->defer('alarm sync busy; deferred to AlarmSync cron', $alarm_id, $entity);
         }
         try {
             try {
                 $alarm = $this->source->alarmByEntity($entity);
             } catch (ClientException $e) {
-                return self::reply(202, 'OpManager API unavailable; deferred to AlarmSync cron', $alarm_id);
+                return $this->defer('OpManager API unavailable; deferred to AlarmSync cron', $alarm_id, $entity);
             }
             if ($alarm === null || (string) ($alarm['alarm_key'] ?? '') !== $alarm_id) {
-                return self::reply(202, 'alarm not current on this entity; deferred to AlarmSync cron', $alarm_id);
+                return $this->defer('alarm not current on this entity; deferred to AlarmSync cron', $alarm_id, $entity);
             }
             $stats = ($this->runner)($alarm);
         } catch (\Throwable $e) {
@@ -86,6 +88,21 @@ final class Receiver
         }
 
         return ['status' => 200, 'body' => ['status' => 'ok', 'alarm_id' => $alarm_id, 'stats' => $stats]];
+    }
+
+    /**
+     * D32: a deferred webhook is still a webhook - the next AlarmSync run handles it as one.
+     * A failing store must not turn the 202 into a 500: the alarm is still polled.
+     *
+     * @return array{status: int, body: array<string, mixed>}
+     */
+    private function defer(string $message, string $alarm_id, string $entity): array
+    {
+        try {
+            $this->requests?->record($alarm_id, $entity);
+        } catch (\Throwable) {
+        }
+        return self::reply(202, $message, $alarm_id);
     }
 
     /** @return array{status: int, body: array<string, mixed>} */
