@@ -99,6 +99,7 @@ final class SuiteConfig
             'last_alarm_sync_error'  => Config::get('last_alarm_sync_error'),
             'alarm_minutes'          => Config::ALARM_SYNC_MINUTES,
             'webhook_token_set'      => Config::get('webhook_token') !== '',
+            'ticket_source' => Config::get('ticket_source'),
             'outbox_pending'         => $box['pending'],
             'outbox_failed'          => $box['failed'],
         ], (string) ($_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s')));
@@ -178,6 +179,17 @@ final class SuiteConfig
 
     private static function tabTickets(string $sfx, string $disabled, bool $canedit): void
     {
+        $by_webhook = Config::get('ticket_source') === 'webhook';
+        echo '<div class="mb-3"><label class="form-label" for="opm-source' . $sfx . '">' . __s('Ticket source', 'opmanager') . '</label>';
+        echo '<select class="form-select" id="opm-source' . $sfx . '" name="ticket_source"' . $disabled . '>';
+        $labels = [
+            'webhook' => __('OpManager webhook criteria: only alarms sent by the webhook profile get a ticket', 'opmanager'),
+            'rules'   => __('Plugin rules: severities and alarm filter below, from every poll', 'opmanager'),
+        ];
+        foreach (Config::TICKET_SOURCES as $source) {
+            echo '<option value="' . htmlescape($source) . '"' . (Config::get('ticket_source') === $source ? ' selected' : '') . '>' . htmlescape($labels[$source]) . '</option>';
+        }
+        echo '</select></div>';
         echo '<div>' . __s('Create a ticket for these OpManager severities', 'opmanager') . '</div>';
         $sev_selected = json_decode(Config::get('ticket_severities'), true) ?: [];
         foreach (Config::SEVERITIES as $num => $label) {
@@ -191,6 +203,9 @@ final class SuiteConfig
                 htmlescape($id),
                 htmlescape($label)
             );
+        }
+        if ($by_webhook) {
+            echo '<div class="form-hint">' . __s('Used only when the ticket source is "Plugin rules". Kept when saved.', 'opmanager') . '</div>';
         }
         echo '<div class="mt-2">' . __s('Production IP ranges (Tools > IP Addressing): tickets are created only for alarms on these', 'opmanager') . '</div>';
         $prod_selected = array_map('intval', (array) (json_decode(Config::get('production_addressings'), true) ?: []));
@@ -280,6 +295,9 @@ final class SuiteConfig
     /** Alarm filter (v0.3.0): event types seen so far plus saved ones, and message keywords. */
     private static function showAlarmFilter(string $sfx, string $disabled): void
     {
+        if (Config::get('ticket_source') === 'webhook') {
+            echo '<div class="form-hint">' . __s('Used only when the ticket source is "Plugin rules". Kept when saved.', 'opmanager') . '</div>';
+        }
         $filter = Config::filterSettings(Config::get('ticket_filter_mode'), Config::get('ticket_filter_event_types'), Config::get('ticket_filter_keywords'));
         echo '<div><label class="form-label" for="opm-filter-mode' . $sfx . '">' . __s('Alarm filter (new tickets only)', 'opmanager') . '</label>';
         echo '<select class="form-select" id="opm-filter-mode' . $sfx . '" name="ticket_filter_mode"' . $disabled . '>';
