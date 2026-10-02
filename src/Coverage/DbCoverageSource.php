@@ -129,7 +129,8 @@ final class DbCoverageSource
             'SELECT'     => ['COUNT DISTINCT' => 'glpi_tickets.id AS cpt'],
             'FROM'       => $alarms,
             'INNER JOIN' => ['glpi_tickets' => ['ON' => [$alarms => 'tickets_id', 'glpi_tickets' => 'id']]],
-            'WHERE'      => getEntitiesRestrictCriteria('glpi_tickets', '', '', true) + ['glpi_tickets.is_deleted' => 0, 'NOT' => ['glpi_tickets.status' => [5, 6]]],
+            // glpi_tickets has no is_recursive column: never ask for recursion here.
+            'WHERE'      => getEntitiesRestrictCriteria('glpi_tickets', '', '', false) + ['glpi_tickets.is_deleted' => 0, 'NOT' => ['glpi_tickets.status' => [5, 6]]],
         ])->current();
         return (int) ($row['cpt'] ?? 0);
     }
