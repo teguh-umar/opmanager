@@ -14,7 +14,8 @@ check('endpoint sets status and JSON', str_contains($hook, 'http_response_code('
 check('endpoint has no session or CSRF calls', !preg_match('/checkCSRF|checkRight|includes\.php/', $hook));
 check('endpoint uses the shared engine', str_contains($hook, '->processOne('));
 check('engine runs with system rights and all entities, like cron', str_contains($hook, 'Session::callAsSystem(') && str_contains($hook, 'Session::loadEntity(0, true)'));
-check('every non-200 answer is logged, 202 included', str_contains($hook, "\$result['status'] !== 200"));
+check('every answer is logged, 200 included', str_contains($hook, 'Webhook: HTTP %d') && !str_contains($hook, "\$result['status'] !== 200") && !str_contains($hook, "\$result['status'] >= 400"));
+check('refused body is logged for diagnosis', str_contains($hook, "\$result['body']['received']"));
 check('token is not put in a toast message', !preg_match('/addMessageAfterRedirect\([^;]*\$token/s', $cfg) && str_contains($cfg, '$_SESSION[SuiteConfig::NEW_TOKEN_KEY]'));
 
 check('token regeneration needs config UPDATE', (bool) preg_match('/generate_webhook_token.*?checkRight\(RightDefinition::CONFIG, UPDATE\)/s', $cfg));
