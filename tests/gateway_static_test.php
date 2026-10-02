@@ -18,6 +18,10 @@ check('create never reuses a closed ticket (D30)', (bool) preg_match("/function 
 check('create refuses when template mandatory fields are missing', (bool) preg_match('/function create\(.*?missingMandatory/s', $src));
 check('trashed ticket reported as TRASHED, not missing', str_contains($src, 'self::TRASHED'));
 
+// v1.1.0 (D32): restore from trash via core, merge target via Ticket_Ticket SON_OF.
+check('restore uses core Ticket::restore inside asPlugin', (bool) preg_match('/function restore\(.*?asPlugin.*?->restore\(\[\'id\' => \$tickets_id\]\)/s', $src));
+check('mergedInto reads Ticket_Ticket SON_OF', (bool) preg_match("/function mergedInto\\(.*?'tickets_id_1' => \\\$tickets_id, 'link' => \\\\Ticket_Ticket::SON_OF/s", $src));
+
 require OPM_ROOT . '/src/Ticketing/TicketGateway.php';
 require OPM_ROOT . '/src/Ticketing/GlpiTicketGateway.php';
 check('html escapes and keeps lines', \GlpiPlugin\Opmanager\Ticketing\GlpiTicketGateway::html("a<b>\nc") === "a&lt;b&gt;<br />\nc");
