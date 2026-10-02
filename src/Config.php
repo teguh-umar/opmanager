@@ -62,6 +62,7 @@ final class Config
         'match_mode'             => 'hybrid_name',
         'asset_itemtypes'        => '["Computer","NetworkEquipment"]',
         'stale_warning_minutes'  => '90',
+        'coverage_states'        => '[]',
         'last_device_sync'       => '',
         'last_device_sync_error' => '',
         'ticket_severities'           => '[1]',
@@ -194,6 +195,10 @@ final class Config
         } else {
             $errors[] = __('Stale warning must be between 5 and 1440 minutes', 'opmanager');
         }
+
+        // Coverage page (D28): GLPI states counted as "in use"; [] = every state.
+        $states = array_values(array_unique(array_filter(array_map('intval', (array) ($post['coverage_states'] ?? [])), static fn (int $id) => $id > 0)));
+        $values['coverage_states'] = (string) json_encode($states);
 
         return ['values' => $values, 'errors' => $errors];
     }
@@ -329,6 +334,12 @@ final class Config
             return [];
         }
         return array_values(array_intersect(array_filter($decoded, 'is_string'), $offered));
+    }
+
+    /** @return list<int> GLPI states counted by the Coverage page; [] = every state (D28). */
+    public static function coverageStates(): array
+    {
+        return array_values(array_map('intval', (array) (json_decode(self::get('coverage_states'), true) ?: [])));
     }
 
     /** @return list<string> configured asset itemtypes still on offer */
