@@ -169,8 +169,10 @@ final class AlarmSync
                 $stats['followups']++;
                 return;
             case Decision::CLEAR:
-                $this->tickets->followup($tid, Messages::cleared($alarm));
-                $this->store->markFollowup($id, $now);
+                if ($this->followupDue($existing, $now)) {
+                    $this->tickets->followup($tid, Messages::cleared($alarm));
+                    $this->store->markFollowup($id, $now);
+                }
                 $stats['cleared']++;
                 if ($this->store->allCleared($tid)) {
                     $this->tickets->solve($tid, Messages::solved());

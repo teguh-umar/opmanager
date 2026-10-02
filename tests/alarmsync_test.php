@@ -302,4 +302,39 @@ $gw->log = [];
 $s->active = [$cpu(1)]; $sync->run($now);
 check('filtered recurrence on a Solved ticket: no reopen', $gw->log === []);
 
+// v1.0.2 (D31): a flapping CPU alarm on a Solved ticket stays silent (prod 2026-10-03:
+// one "is Clear" followup every flap, every 30 min).
+$s = new Src([$cpu(1)]); $store = new Store(); $gw = new Gw();
+(new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $cfg))->run($now);
+$old = $store->find('c1')['tickets_id'];
+$gw->status[$old] = 5; $gw->log = [];
+$sync = new AlarmSync($s, $store, $gw, new Assets(), new Prod(), $excl);
+foreach (['10:30', '11:00', '11:30', '12:00', '12:30', '13:00'] as $i => $hm) {
+    $s->active = [$cpu($i % 2 === 0 ? 5 : 1)];
+    $sync->run("2026-09-30 {$hm}:00");
+}
+check('flapping filtered alarm on a Solved ticket: no followup at all', $gw->log === []);
+
+// D31: on an open ticket every plugin followup of one alarm is at most one per hour.
+[$sync, $src, $store, $gw] = $mk([$al('f1', 1, 'swf'), $al('f2', 1, 'swf')]);
+$sync->run($now);                                              // f1 creates 100, f2 joins it
+$gw->log = [];
+foreach (['10:30', '11:00', '11:30', '12:00'] as $i => $hm) {    // f2 flaps Clear / Critical
+    $src->active = [$al('f1', 1, 'swf'), $al('f2', $i % 2 === 0 ? 5 : 1, 'swf')];
+    $sync->run("2026-09-30 {$hm}:00");
+}
+check('flapping alarm on an open ticket: one followup per hour', $gw->log === ['followup 100', 'followup 100']);
+$src->active = [$al('f1', 5, 'swf'), $al('f2', 5, 'swf')];
+$sync->run('2026-09-30 12:10:00');
+check('throttled Clear still solves the ticket', in_array('solve 100', $gw->log, true));
+
+[$sync, $src, $store, $gw] = $mk([$al('v1', 1, 'swv', 'CPU')]);
+$sync->run($now);
+$gw->log = [];
+foreach (['10:20', '10:40', '11:00', '11:20'] as $i => $hm) {           // severity flaps Critical / Attention
+    $src->active = [$al('v1', $i % 2 === 0 ? 3 : 1, 'swv', 'CPU')];
+    $sync->run("2026-09-30 {$hm}:00");
+}
+check('severity flapping on an open ticket: one followup per hour', $gw->log === ['followup 100', 'followup 100']);
+
 done();

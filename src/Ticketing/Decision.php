@@ -22,7 +22,7 @@ final class Decision
     /** Ticket status value meaning "in the GLPI trash / merged away" (same as TicketGateway::TRASHED). */
     public const TRASHED = -1;
 
-    /** A message-only change (e.g. a live CPU value) is reported at most once per this many minutes. */
+    /** One alarm writes at most one followup per this many minutes on an open ticket (D22, D31). */
     public const MESSAGE_FOLLOWUP_MINUTES = 60;
 
     private const SOLVED = 5;
@@ -45,19 +45,25 @@ final class Decision
                 return self::out(self::NONE, $tid);
             }
             $was_cleared = $existing['state'] === 'cleared';
+            // D31 (v1.0.2): every plugin followup of one alarm on an open ticket is at most one
+            // per MESSAGE_FOLLOWUP_MINUTES, also severity changes and "active again" (flapping).
+            $due = $c['message_followup_due'] ?? true;
             if ($c['is_clear']) {
-                return self::out($was_cleared ? self::NONE : self::CLEAR, $tid);
+                // D31: a Solved ticket is done; its alarm clearing again says nothing new.
+                // A throttled Clear still returns CLEAR: AlarmSync then only checks the solve.
+                $quiet = $was_cleared || $c['ticket_status'] === self::SOLVED;
+                return self::out($quiet ? self::NONE : self::CLEAR, $tid);
             }
             if ($was_cleared) {
                 if ($c['ticket_status'] === self::SOLVED) {
                     // D30: a Solved ticket reopens only for an alarm the filter still allows.
                     return self::out(($c['reopen_allowed'] ?? true) ? self::REOPEN : self::NONE, $tid);
                 }
-                return self::out(self::FOLLOWUP, $tid);
+                return self::out($due ? self::FOLLOWUP : self::NONE, $tid);
             }
             $severity_changed = $c['severity'] !== (int) $existing['severity'];
             $message_changed  = $c['message'] !== (string) $existing['message'];
-            $report           = $severity_changed || ($message_changed && ($c['message_followup_due'] ?? true));
+            $report           = ($severity_changed || $message_changed) && $due;
             return self::out($report ? self::FOLLOWUP : self::NONE, $tid);
         }
 
