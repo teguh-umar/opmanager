@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a Coverage page (OpManager devices vs GLPI assets, with five follow-up lists and CSV export), and restyle the OpManager Setup section as a status strip plus tabs.
+**Goal:** Add a Coverage page and native GLPI dashboard cards (OpManager devices vs GLPI assets, with five follow-up lists and CSV export), and restyle the OpManager Setup section as a status strip plus tabs.
 
 **Architecture:**
 - Pure classes hold everything that is decided:
@@ -822,7 +822,347 @@ Ruling to check while implementing: `AddressingRanges::load()` returns `list<{id
 
 ---
 
-### Task 6: Release 0.6.0
+### Task 6: Native GLPI dashboard cards
+
+**Files:**
+- Create: `src/Coverage/Cards.php`, `tests/cards_test.php`
+- Modify: `src/Coverage/Report.php`, `src/Coverage/DbCoverageSource.php`, `setup.php`, `tests/coverage_report_test.php`, `tests/coverage_source_test.php`
+
+**Interfaces:**
+- Consumes: `Report::build`, `DbCoverageSource`, `Page::getSearchURL`.
+- Produces:
+  - `Report::byCategory(list<device>): array<string, array{matched:int, unmatched:int, review:int}>`, sorted by category name, with an empty category shown as `'-'`;
+  - `DbCoverageSource::alarmsBySeverity(): array<string,int>`, counting active alarms by `severity_label`;
+  - `DbCoverageSource::openAlarmTickets(): int`, counting distinct tickets linked to alarms that are not solved, closed or deleted, limited to the user's entities;
+  - `Cards::cards(array $cards = []): array`, the hook target;
+  - providers `Cards::coverage|devices|notMonitored|notInGlpi|matching|byCategory|alarmsBySeverity|openAlarmTickets(array $params = []): array`;
+  - pure helpers `Cards::categoryBars(array $by_category): array{labels, series}` and `Cards::cached(array &$store, string $key, int $ttl, int $now, callable $compute): mixed`.
+
+- [ ] **Step 1: Failing tests**
+
+Append to `tests/coverage_report_test.php` before `done();`:
+
+```php
+$bc = Report::byCategory($devices);
+check('by category counts per match state', $bc === [
+    'Server' => ['matched' => 2, 'unmatched' => 1, 'review' => 1],
+    'Switch' => ['matched' => 0, 'unmatched' => 1, 'review' => 0],
+]);
+check('empty category shown as dash', array_keys(Report::byCategory([$dev(9, 'x', '1.1.1.1', 'unmatched', '', 0, '', '', '')])) === ['-']);
+```
+
+Append to `tests/coverage_source_test.php` before `done();`:
+
+```php
+check('active alarms grouped by severity', (bool) preg_match("/function alarmsBySeverity.*?'state' => 'active'.*?'GROUPBY'/s", $src));
+check('open alarm tickets are entity-scoped and exclude solved/closed/deleted', (bool) preg_match("/function openAlarmTickets.*?glpi_tickets.*?getEntitiesRestrictCriteria\('glpi_tickets'.*?'is_deleted' => 0.*?\[5, 6\]/s", $src));
+```
+
+`tests/cards_test.php`:
+
+```php
+<?php
+
+namespace {
+    require __DIR__ . '/bootstrap.php';
+    $GLOBALS['RIGHTS'] = [];
+    class Session
+    {
+        public static function haveRight($n, $m) { return ((int) ($GLOBALS['RIGHTS'][$n] ?? 0) & $m) === $m; }
+    }
+    class Html { public static function getPrefixedUrl($u) { return $u; } }
+    class CommonGLPI {}
+    require OPM_ROOT . '/src/RightDefinition.php';
+    require OPM_ROOT . '/src/Coverage/Page.php';
+    require OPM_ROOT . '/src/Coverage/Report.php';
+    require OPM_ROOT . '/src/Coverage/Cards.php';
+
+    use GlpiPlugin\Opmanager\Coverage\Cards;
+    use GlpiPlugin\Opmanager\RightDefinition as R;
+
+    check('no monitoring right: no card offered', Cards::cards(['core' => []]) === ['core' => []]);
+    check('no monitoring right: provider returns zero, never data', Cards::coverage()['number'] === 0 && Cards::matching()['data'] === []);
+
+    $GLOBALS['RIGHTS'] = [R::MONITORING => READ];
+    $cards = Cards::cards(['core' => []]);
+    $mine  = array_filter($cards, fn ($k) => str_starts_with($k, 'plugin_opmanager_'), ARRAY_FILTER_USE_KEY);
+    check('eight cards registered, existing kept', count($mine) === 8 && isset($cards['core']));
+    $ok = true;
+    foreach ($mine as $card) {
+        [$class, $method] = explode('::', $card['provider']);
+        $ok = $ok && is_string($card['provider']) && method_exists($class, $method) && $card['group'] === 'OpManager' && $card['widgettype'] !== [];
+    }
+    check('providers are Class::method strings that exist (GLPI explodes them)', $ok);
+
+    $bars = Cards::categoryBars(['Server' => ['matched' => 2, 'unmatched' => 1, 'review' => 1], 'Switch' => ['matched' => 0, 'unmatched' => 1, 'review' => 0]]);
+    check('stacked bars shape', $bars['labels'] === ['Server', 'Switch'] && count($bars['series']) === 3 && $bars['series'][0]['data'] === [2, 0]);
+
+    $store = []; $calls = 0;
+    $f = function () use (&$calls) { return ++$calls; };
+    Cards::cached($store, 'k', 300, 1000, $f);
+    Cards::cached($store, 'k', 300, 1200, $f);
+    check('cache reused within ttl', $calls === 1);
+    Cards::cached($store, 'k', 300, 1301, $f);
+    check('cache recomputed after ttl', $calls === 2);
+    Cards::cached($store, 'other', 300, 1301, $f);
+    check('cache keyed (per entity set)', $calls === 3);
+
+    $setup = (string) file_get_contents(OPM_ROOT . '/setup.php');
+    check('dashboard hook registered with a Class::method string', str_contains($setup, "\$PLUGIN_HOOKS['dashboard_cards']['opmanager'] = 'GlpiPlugin\\\\Opmanager\\\\Coverage\\\\Cards::cards';"));
+
+    done();
+}
+```
+
+- [ ] **Step 2: Run** — `C:/php/php.exe tests/coverage_report_test.php; C:/php/php.exe tests/coverage_source_test.php; C:/php/php.exe tests/cards_test.php`. Expected: `FAIL` on the new checks, then a fatal error on the missing `Cards.php`.
+
+- [ ] **Step 3: Implement**
+
+In `src/Coverage/Report.php`, add:
+
+```php
+    /**
+     * @param list<array<string, mixed>> $devices
+     * @return array<string, array{matched: int, unmatched: int, review: int}>
+     */
+    public static function byCategory(array $devices): array
+    {
+        $out = [];
+        foreach ($devices as $d) {
+            $cat = (string) $d['category'] !== '' ? (string) $d['category'] : '-';
+            $out[$cat] ??= ['matched' => 0, 'unmatched' => 0, 'review' => 0];
+            if (isset($out[$cat][$d['match_state']])) {
+                $out[$cat][$d['match_state']]++;
+            }
+        }
+        ksort($out);
+        return $out;
+    }
+```
+
+In `src/Coverage/DbCoverageSource.php`, add:
+
+```php
+    /** @return array<string, int> active alarms per severity label */
+    public function alarmsBySeverity(): array
+    {
+        global $DB;
+
+        $out = [];
+        foreach ($DB->request([
+            'SELECT'  => ['severity_label', 'COUNT' => 'id AS cpt'],
+            'FROM'    => \GlpiPlugin\Opmanager\Alarm::getTable(),
+            'WHERE'   => ['state' => 'active'],
+            'GROUPBY' => 'severity_label',
+        ]) as $r) {
+            $out[(string) $r['severity_label']] = (int) $r['cpt'];
+        }
+        return $out;
+    }
+
+    public function openAlarmTickets(): int
+    {
+        global $DB;
+
+        $row = $DB->request([
+            'SELECT'     => ['COUNT DISTINCT' => 'glpi_tickets.id AS cpt'],
+            'FROM'       => \GlpiPlugin\Opmanager\Alarm::getTable(),
+            'INNER JOIN' => ['glpi_tickets' => ['ON' => [\GlpiPlugin\Opmanager\Alarm::getTable() => 'tickets_id', 'glpi_tickets' => 'id']]],
+            'WHERE'      => getEntitiesRestrictCriteria('glpi_tickets', '', '', true) + ['glpi_tickets.is_deleted' => 0, 'NOT' => ['glpi_tickets.status' => [5, 6]]],
+        ])->current();
+        return (int) ($row['cpt'] ?? 0);
+    }
+```
+
+`src/Coverage/Cards.php`:
+
+```php
+<?php
+
+namespace GlpiPlugin\Opmanager\Coverage;
+
+use GlpiPlugin\Opmanager\Config;
+use GlpiPlugin\Opmanager\RightDefinition;
+
+/**
+ * Native GLPI dashboard cards (D28 addendum). Core renders card providers WITHOUT a right
+ * check (integrasipaman lesson, hub §7): every provider and the card list check
+ * plugin_opmanager_monitoring READ themselves. Figures come from the same Report as the
+ * Coverage page, cached per user and entity set for five minutes.
+ */
+final class Cards
+{
+    private const TTL = 300;
+
+    private const GROUP = 'OpManager';
+
+    /** @param array<string, mixed> $cards */
+    public static function cards(array $cards = []): array
+    {
+        if (!self::allowed()) {
+            return $cards;
+        }
+        $defs = [
+            'coverage'         => [['bigNumber'], __('OpManager coverage of GLPI assets (%)', 'opmanager')],
+            'devices'          => [['bigNumber'], __('OpManager devices', 'opmanager')],
+            'notMonitored'     => [['bigNumber'], __('GLPI assets not monitored', 'opmanager')],
+            'notInGlpi'        => [['bigNumber'], __('OpManager devices not in GLPI', 'opmanager')],
+            'matching'         => [['pie', 'donut', 'halfpie'], __('OpManager device matching', 'opmanager')],
+            'byCategory'       => [['stackedbars', 'stackedHBars', 'bars'], __('OpManager devices by category', 'opmanager')],
+            'alarmsBySeverity' => [['pie', 'donut', 'halfpie', 'bar'], __('Active OpManager alarms by severity', 'opmanager')],
+            'openAlarmTickets' => [['bigNumber'], __('Open tickets from OpManager alarms', 'opmanager')],
+        ];
+        foreach ($defs as $method => [$types, $label]) {
+            $cards['plugin_opmanager_' . strtolower($method)] = [
+                'widgettype' => $types,
+                'group'      => self::GROUP,
+                'label'      => $label,
+                'provider'   => self::class . '::' . $method,
+            ];
+        }
+        return $cards;
+    }
+
+    public static function coverage(array $params = []): array
+    {
+        $kpi = self::allowed() ? self::summary()['kpi'] : ['coverage_pct' => 0];
+        return self::big(__('Coverage %', 'opmanager'), $kpi['coverage_pct'], 'ti ti-chart-pie', 'not_monitored');
+    }
+
+    public static function devices(array $params = []): array
+    {
+        $kpi = self::allowed() ? self::summary()['kpi'] : ['devices' => 0];
+        return self::big(__('OpManager devices', 'opmanager'), $kpi['devices'], 'ti ti-activity', 'not_in_glpi');
+    }
+
+    public static function notMonitored(array $params = []): array
+    {
+        $kpi = self::allowed() ? self::summary()['kpi'] : ['not_monitored' => 0];
+        return self::big(__('GLPI assets not monitored', 'opmanager'), $kpi['not_monitored'], 'ti ti-eye-off', 'not_monitored');
+    }
+
+    public static function notInGlpi(array $params = []): array
+    {
+        $kpi = self::allowed() ? self::summary()['kpi'] : ['not_in_glpi' => 0];
+        return self::big(__('OpManager devices not in GLPI', 'opmanager'), $kpi['not_in_glpi'], 'ti ti-database-off', 'not_in_glpi');
+    }
+
+    public static function matching(array $params = []): array
+    {
+        $out = ['data' => [], 'label' => __('OpManager device matching', 'opmanager'), 'icon' => 'ti ti-link'];
+        if (!self::allowed()) {
+            return $out;
+        }
+        $k = self::summary()['kpi'];
+        foreach ([[__('Matched', 'opmanager'), $k['matched'], 'not_monitored'], [__('Not in GLPI', 'opmanager'), $k['not_in_glpi'], 'not_in_glpi'], [__('Ambiguous', 'opmanager'), $k['ambiguous'], 'ambiguous']] as [$label, $n, $list]) {
+            $out['data'][] = ['number' => $n, 'label' => $label, 'url' => self::url($list)];
+        }
+        return $out;
+    }
+
+    public static function byCategory(array $params = []): array
+    {
+        return [
+            'data'  => self::allowed() ? self::categoryBars(self::summary()['by_category']) : ['labels' => [], 'series' => []],
+            'label' => __('OpManager devices by category', 'opmanager'),
+            'icon'  => 'ti ti-category',
+        ];
+    }
+
+    public static function alarmsBySeverity(array $params = []): array
+    {
+        $out = ['data' => [], 'label' => __('Active OpManager alarms by severity', 'opmanager'), 'icon' => 'ti ti-bell'];
+        if (!self::allowed()) {
+            return $out;
+        }
+        foreach (self::summary()['alarms'] as $label => $n) {
+            $out['data'][] = ['number' => $n, 'label' => $label, 'url' => \GlpiPlugin\Opmanager\Alarm::getSearchURL()];
+        }
+        return $out;
+    }
+
+    public static function openAlarmTickets(array $params = []): array
+    {
+        $n = self::allowed() ? self::summary()['open_tickets'] : 0;
+        return ['number' => $n, 'label' => __('Open tickets from OpManager alarms', 'opmanager'), 'icon' => 'ti ti-ticket'];
+    }
+
+    /**
+     * @param array<string, array{matched: int, unmatched: int, review: int}> $by_category
+     * @return array{labels: list<string>, series: list<array{name: string, data: list<int>}>}
+     */
+    public static function categoryBars(array $by_category): array
+    {
+        $series = [];
+        foreach (['matched' => __('Matched', 'opmanager'), 'unmatched' => __('Not in GLPI', 'opmanager'), 'review' => __('Ambiguous', 'opmanager')] as $key => $name) {
+            $series[] = ['name' => $name, 'data' => array_values(array_map(static fn ($c) => $c[$key], $by_category))];
+        }
+        return ['labels' => array_keys($by_category), 'series' => $series];
+    }
+
+    /** @param array<string, array{at: int, value: mixed}> $store */
+    public static function cached(array &$store, string $key, int $ttl, int $now, callable $compute): mixed
+    {
+        if (!isset($store[$key]) || $now - $store[$key]['at'] >= $ttl) {
+            $store[$key] = ['at' => $now, 'value' => $compute()];
+        }
+        return $store[$key]['value'];
+    }
+
+    private static function allowed(): bool
+    {
+        return \Session::haveRight(RightDefinition::MONITORING, READ);
+    }
+
+    /** @return array{kpi: array<string, int>, by_category: array, alarms: array<string, int>, open_tickets: int} */
+    private static function summary(): array
+    {
+        $_SESSION['plugin_opmanager_cards'] ??= [];
+        $key = md5((string) json_encode($_SESSION['glpiactiveentities'] ?? []));
+        return self::cached($_SESSION['plugin_opmanager_cards'], $key, self::TTL, time(), static function (): array {
+            $src     = new DbCoverageSource();
+            $devices = $src->devices();
+            $report  = Report::build($devices, $src->assets(Config::assetItemtypes(), Config::coverageStates()), [
+                'ranges' => [], 'production_only' => false, 'category' => '',
+                'last_device_sync' => Config::get('last_device_sync'), 'stale_minutes' => max(1, (int) Config::get('stale_warning_minutes')),
+            ]);
+            return [
+                'kpi'          => $report['kpi'],
+                'by_category'  => Report::byCategory($devices),
+                'alarms'       => $src->alarmsBySeverity(),
+                'open_tickets' => $src->openAlarmTickets(),
+            ];
+        });
+    }
+
+    private static function big(string $label, int $number, string $icon, string $list): array
+    {
+        return ['number' => $number, 'label' => $label, 'icon' => $icon, 'url' => self::url($list)];
+    }
+
+    private static function url(string $list): string
+    {
+        return Page::getSearchURL(false) . '?list=' . rawurlencode($list);
+    }
+}
+```
+
+Widget type keys were checked against `Glpi\Dashboard\Widget::getAllTypes()` in 11.0.5: `pie`, `donut`, `halfpie`, `bar`, `bars`, `stackedbars`, `stackedHBars` and `bigNumber` all exist.
+
+In `setup.php` `plugin_init_opmanager()`, after the item hooks, add:
+
+```php
+    // Native dashboard cards (v0.6.0). Provider strings are exploded by core (hub §4).
+    $PLUGIN_HOOKS['dashboard_cards']['opmanager'] = 'GlpiPlugin\\Opmanager\\Coverage\\Cards::cards';
+```
+
+- [ ] **Step 4: Run** — `C:/php/php.exe tests/cards_test.php && C:/php/php.exe tests/coverage_report_test.php && C:/php/php.exe tests/coverage_source_test.php && C:/php/php.exe -l src/Coverage/Cards.php && C:/php/php.exe tests/run_all.php`. Expected: `ALL PASS` for each, no syntax errors, then `SUITES OK`.
+
+- [ ] **Step 5: Commit** — `feat: native GLPI dashboard cards (rights-checked, cached)`
+
+---
+
+### Task 7: Release 0.6.0
 
 **Files:**
 - Modify: `setup.php`, `CHANGELOG.md`
@@ -831,7 +1171,7 @@ Ruling to check while implementing: `AddressingRanges::load()` returns `list<{id
 - [ ] **Step 1:** Set `PLUGIN_OPMANAGER_VERSION` to `0.6.0`. Add a `## 0.6.0` section to the CHANGELOG covering:
   - the Coverage page: KPIs, five lists, CSV, production and category filters;
   - Setup as a status strip plus tabs;
-  - the new setting "GLPI statuses counted as in use".
+  - the new setting "GLPI statuses counted as in use", and the native dashboard cards (group "OpManager").
 - [ ] **Step 2:** Write `docs/runbook-v0.6.0.md` (frontmatter `date: 2026-10-02`, `tags: [opmanager, runbook]`, `status: active`) with these checks:
   - **Install and selfcheck:** `ALL PASS (18)`.
   - **Setup:**
