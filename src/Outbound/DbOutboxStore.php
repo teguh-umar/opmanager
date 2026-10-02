@@ -32,6 +32,17 @@ final class DbOutboxStore implements OutboxStore
         ])) > 0;
     }
 
+    public function hasPendingAck(string $alarm_key): bool
+    {
+        global $DB;
+
+        return count($DB->request([
+            'FROM'  => self::TABLE,
+            'WHERE' => ['alarm_key' => $alarm_key, 'action' => 'ack', 'state' => 'pending'],
+            'LIMIT' => 1,
+        ])) > 0;
+    }
+
     public function pending(int $limit): array
     {
         global $DB;

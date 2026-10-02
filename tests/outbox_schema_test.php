@@ -12,4 +12,6 @@ check('outbox dropped on uninstall', str_contains($uninstall, 'glpi_plugin_opman
 check('store: pending oldest first', (bool) preg_match("/function pending.*?'state' => 'pending'.*?'ORDER'\\s+=> 'id',/s", $store));
 check('store: clear dedupe counts only pending clears (reopened alarm can be cleared again)', (bool) preg_match("/function hasClear.*?'action' => 'clear', 'state' => 'pending'\]/s", $store));
 
+check('store: pending acknowledge check', (bool) preg_match("/function hasPendingAck.*?'action' => 'ack', 'state' => 'pending'\]/s", $store));
+
 done();

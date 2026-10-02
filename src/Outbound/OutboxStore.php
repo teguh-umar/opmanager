@@ -11,6 +11,9 @@ interface OutboxStore
     /** A clear for this alarm is still waiting: do not queue a second one. */
     public function hasClear(string $alarm_key): bool;
 
+    /** An acknowledge for this alarm is still waiting: do not queue a second one (D27). */
+    public function hasPendingAck(string $alarm_key): bool;
+
     /** @return list<array{id: int, alarm_key: string, entity_key: string, action: string, payload: string, attempts: int, next_try_at: string}> oldest first */
     public function pending(int $limit): array;
 

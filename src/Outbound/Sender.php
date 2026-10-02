@@ -49,6 +49,7 @@ final class Sender
                 match ($row['action']) {
                     'note'  => $this->writer->addNote($row['entity_key'], $row['payload']),
                     'clear' => $this->writer->clearAlarm($row['entity_key']),
+                    'ack'   => $this->writer->acknowledgeAlarm($row['entity_key']),
                     default => throw new \DomainException('unknown outbox action ' . $row['action']),
                 };
                 $this->store->markSent($row['id'], $now);

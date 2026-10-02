@@ -24,4 +24,6 @@ check('hook sends under the outbox lock, skipping when busy', (bool) preg_match(
 check('cron sends under the same outbox lock', (bool) preg_match('/function cronOutboxSend.*?new DbSyncLock\(Hooks::OUTBOX_LOCK\).*?->acquire\(0\).*?finally.*?->release\(\)/s', $cron));
 check('hook stops at the first failure', str_contains($hooks, '->run($now, 20, true)'));
 
+check('followup hook dedupes pending acknowledges', str_contains($hooks, "[\$store, 'hasPendingAck']"));
+
 done();
