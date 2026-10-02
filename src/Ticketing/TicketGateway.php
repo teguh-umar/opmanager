@@ -24,6 +24,12 @@ interface TicketGateway
 
     public function link(int $new_tickets_id, int $old_tickets_id): void;
 
+    /** Takes the ticket out of the GLPI trash. */
+    public function restore(int $tickets_id): void;
+
+    /** The ticket a merge moved this one into (Ticket_Ticket SON_OF), 0 when not merged. */
+    public function mergedInto(int $tickets_id): int;
+
     /** Solved or Closed at or after $since. */
     public function closedSince(int $tickets_id, string $since): bool;
 }

@@ -58,6 +58,7 @@ final class Store implements AlarmStore
 final class Gw implements TicketGateway
 {
     public array $status = []; public array $log = []; public bool $failCreate = false; private int $next = 100; public array $closedSince = [];
+    public array $merged = []; public array $beforeTrash = [];
     public function status(int $t): ?int { return $this->status[$t] ?? null; }
     public function create(array $a, array $asset): int { if ($this->failCreate) { return 0; } $t = $this->next++; $this->status[$t] = 1; $this->log[] = "create {$t} {$a['alarm_key']}"; return $t; }
     public function createStorm(array $a, string $now): int { $t = $this->next++; $this->status[$t] = 1; $this->log[] = "storm {$t}"; return $t; }
@@ -66,6 +67,8 @@ final class Gw implements TicketGateway
     public function reopen(int $t, string $x): void { $this->status[$t] = 2; $this->log[] = "reopen {$t}"; }
     public function solve(int $t, string $x): void { $this->status[$t] = 5; $this->log[] = "solve {$t}"; }
     public function link(int $n, int $o): void { $this->log[] = "link {$n}->{$o}"; }
+    public function restore(int $t): void { $this->status[$t] = $this->beforeTrash[$t] ?? 2; $this->log[] = "restore {$t}"; }
+    public function mergedInto(int $t): int { return $this->merged[$t] ?? 0; }
     public function closedSince(int $t, string $since): bool { return in_array($t, $this->closedSince, true); }
 }
 final class Prod implements ProductionCheck
