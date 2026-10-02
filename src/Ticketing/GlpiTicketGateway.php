@@ -139,6 +139,20 @@ final class GlpiTicketGateway implements TicketGateway
         });
     }
 
+    public function restore(int $tickets_id): void
+    {
+        $this->asPlugin(function () use ($tickets_id): void {
+            (new \Ticket())->restore(['id' => $tickets_id]);
+        });
+    }
+
+    public function mergedInto(int $tickets_id): int
+    {
+        // Ticket::merge() trashes the source and links source (1) SON_OF target (2).
+        $rows = (new \Ticket_Ticket())->find(['tickets_id_1' => $tickets_id, 'link' => \Ticket_Ticket::SON_OF], ['id DESC'], 1);
+        return $rows === [] ? 0 : (int) reset($rows)['tickets_id_2'];
+    }
+
     /** Depth of plugin writes in progress; the outbound hooks ignore what happens meanwhile (D24). */
     private static int $writing = 0;
 
