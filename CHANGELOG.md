@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2
+
+- Fix (D31): a flapping alarm (for example a CPU threshold going Clear / Critical every
+  poll) no longer adds a followup to a **Solved** ticket on every Clear. A Solved ticket
+  gets no further "is Clear" followups.
+- Stricter followups on open tickets: one alarm adds at most **one followup per hour**,
+  whatever changed (severity, message, active again, Clear). Before, only message changes
+  were limited; severity changes and Clear / active-again were posted every time.
+- A Clear that is held back by this limit still solves the ticket when all its alarms are Clear.
+
 ## 1.0.1
 
 - Fix (D30): a **Closed** ticket is no longer reopened, or followed up, when its OpManager
