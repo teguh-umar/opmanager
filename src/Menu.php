@@ -47,6 +47,11 @@ class Menu extends \CommonGLPI
                 'icon'  => Alarm::getIcon(),
                 'links' => ['search' => Alarm::getSearchURL(false)],
             ],
+            'coverage'         => [
+                'title' => \GlpiPlugin\Opmanager\Coverage\Page::getTypeName(),
+                'page'  => \GlpiPlugin\Opmanager\Coverage\Page::getSearchURL(false),
+                'icon'  => \GlpiPlugin\Opmanager\Coverage\Page::getIcon(),
+            ],
         ];
     }
 }
