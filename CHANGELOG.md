@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.0
+
+- New Setup option **Ticket source** (tab Tickets), default **OpManager webhook criteria** (D32):
+  - only alarms that the OpManager "Invoke a Webhook" profile sends get a ticket, if their
+    IP is in a production range; the severities and the alarm filter are not used;
+  - a Solved ticket is reopened, and a ticket in the trash is restored, only when the
+    webhook sends that alarm again; the poll alone never creates, reopens or restores;
+  - the poll still stores every alarm and keeps followups, Clear and Solve of existing tickets;
+  - a webhook answered 202 (sync busy, API down) is remembered and handled by the next poll.
+- A webhook alarm whose ticket could not be created (error, or a template mandatory field missing) is retried by the next poll until it succeeds.
+- Do not enable repeat notifications on the OpManager webhook profile: every repeat counts as a new webhook and reopens a Solved ticket.
+- Known limitation: a ticket that a technician trashes while it is linked as a child (Linked tickets) of another ticket is treated like a merged ticket; its alarm moves to the parent.
+- **Plugin rules** keeps the 1.0.2 behaviour.
+- An alarm whose ticket was merged now follows the ticket it was merged into.
+- Setup: the Webhook badge is red when the webhook mode has no token (no ticket would be created).
+- Upgrade adds the table `glpi_plugin_opmanager_ticketrequests`. Check in OpManager that the
+  webhook profile has the criteria you want (e.g. Device Down, Critical) and "Notify when the
+  alarm is cleared".
 ## 1.0.2
 
 - Fix (D31): a flapping alarm (for example a CPU threshold going Clear / Critical every
