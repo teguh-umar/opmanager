@@ -496,7 +496,7 @@ token tidak pernah ditampilkan ulang utuh.
 
 `ticket_source` di config plugin: `webhook` (default instalasi baru **dan** upgrade) atau
 `rules`. Di Setup → tab Tiket sebagai pilihan *Sumber tiket*. Pada mode `webhook`,
-severity tiket (tab Tiket) dan seluruh tab Filter tampil nonaktif dengan catatan "dipakai
+severity tiket (tab Tiket) dan seluruh tab Filter tetap bisa diedit dan diberi catatan "dipakai
 hanya pada mode Aturan plugin"; nilainya tetap tersimpan. Mode `rules` = perilaku v1.0.2
 tanpa perubahan (kecuali §16.5, berlaku di kedua mode).
 
@@ -536,8 +536,9 @@ VARCHAR(255) UNIQUE, `entity_key` VARCHAR(255), `date_creation`, `date_mod` TIME
 - Alarm webhook yang gagal diproses atau tertunda (pending) mendapat/menyimpan permintaan; permintaan dihapus hanya setelah alarm diproses tanpa error dan tidak pending.
 - `AlarmSync::run` membaca permintaan sebelum loop. Alarm aktif yang ada di daftar
   diproses sebagai *diminta webhook*; permintaannya dihapus setelah alarm itu diproses
-  tanpa error (apa pun keputusannya).
-- Permintaan yang lebih tua dari 24 jam dihapus di akhir `run`.
+  tanpa error dan tidak pending.
+- Clear yang dikonfirmasi lewat entity juga menghapus permintaan alarm itu.
+- Permintaan yang tidak diperbarui selama 24 jam dihapus di akhir `run` (setiap percobaan yang gagal/pending memperbaruinya, jadi alarm yang masih aktif terus dicoba).
 - Pada mode `rules` tabel tetap diisi dan dibersihkan, tetapi tidak berpengaruh.
 
 ### 16.5 Tiket hasil merge (kedua mode)
@@ -563,7 +564,7 @@ ada, alarm dibiarkan (seperti TRASHED sekarang).
 - Mode webhook: tiket di trash + webhook → restore lalu reopen (Solved) atau tiket baru
   bertaut (Closed); + poll saja → tidak ada aksi.
 - Receiver 202 → permintaan tercatat → cron berikutnya membuat tiket, permintaan terhapus;
-  permintaan > 24 jam terhapus.
+  permintaan yang tidak diperbarui > 24 jam terhapus.
 - Merge: alarm pindah ke tiket tujuan; rantai > 5 dibiarkan.
 - Mode `rules`: seluruh test v1.0.2 lulus tanpa perubahan.
 - Migrasi: tabel baru + `ticket_source = webhook` pada instalasi baru dan upgrade.
