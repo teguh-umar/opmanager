@@ -6,8 +6,9 @@ require __DIR__ . '/bootstrap.php';
 // in …/PGN GLPI Suite/shared/pgnsuite/ (hub §5). No line-ending normalisation
 // here on purpose: the file itself must be exact.
 $expected = [
-    'lib/pgnsuite/ConfigTab.php' => '008C4C817DB2E42040915136108CD41917C34760A8F4CDDC60E46BDB208F39D0',
-    'lib/pgnsuite/AssetTab.php'  => 'C7F6C88B58BE9A7AAF172F3A2F2DBAAFBB07B0CE1898BA5A74A0EDB61EA143A9',
+    'lib/pgnsuite/ConfigTab.php' => 'F94A80C1C813A951919A20D2521DE35B431F9C836BBCCE89BAC70E544D0B80FA',
+    'lib/pgnsuite/AssetTab.php'  => 'F8629CCA6D141B1E9271686C8D7F9D65E4FC84E39CF07E85B10FBC849A0B2466',
+    'lib/pgnsuite/Menu.php'      => 'FC0B96219DD489639DEECD720197BA6B9810F6303A28CE7DB891139E7913CBFE',
 ];
 foreach ($expected as $rel => $sha) {
     $path   = OPM_ROOT . '/' . $rel;

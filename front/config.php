@@ -50,6 +50,7 @@ if (Session::haveRight('config', READ)) {
 }
 
 // Standalone page for OpManager admins without core `config` READ. No menu entry.
-Html::header('OpManager', '', 'opmanager', 'device');
+Html::header('OpManager', '', \GlpiPlugin\Pgnsuite\Menu::SECTOR, 'opmanager', 'device');
+\GlpiPlugin\Pgnsuite\Menu::renderSubNav('opmanager', 'device');
 SuiteConfig::showForm();
 Html::footer();
