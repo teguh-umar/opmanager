@@ -3,11 +3,11 @@
 /**
  * OpManager - ManageEngine OpManager <-> GLPI 11 integration (PGN GLPI Suite plugin #7)
  *
- * @author  PGN ICT
+ * @author  ICT
  * @license GPL-3.0-or-later
  */
 
-define('PLUGIN_OPMANAGER_VERSION', '1.1.0');
+define('PLUGIN_OPMANAGER_VERSION', '1.2.0');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
@@ -19,7 +19,7 @@ function plugin_version_opmanager()
     return [
         'name'         => 'OpManager',
         'version'      => PLUGIN_OPMANAGER_VERSION,
-        'author'       => 'PGN ICT',
+        'author'       => 'ICT',
         'license'      => 'GPL-3.0-or-later',
         'homepage'     => '',
         'requirements' => [
@@ -71,8 +71,13 @@ function plugin_init_opmanager()
 
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
-    // Array-of-classes value is mandatory for a NEW sector (hub §4).
-    $PLUGIN_HOOKS['menu_toadd']['opmanager'] = ['opmanager' => [\GlpiPlugin\Opmanager\Menu::class]];
+    // Shared suite sidebar menu, one entry per plugin (hub §5, v1.2.0). Same loading
+    // rule as ConfigTab below: the first plugin that loads supplies the class.
+    if (!class_exists(\GlpiPlugin\Pgnsuite\Menu::class, false)) {
+        require_once __DIR__ . '/lib/pgnsuite/Menu.php';
+    }
+    \GlpiPlugin\Pgnsuite\Menu::register('opmanager');
+    $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\Menu::HOOK]['opmanager'] = \GlpiPlugin\Opmanager\Menu::class . '::entry';
 
     // Shared "PGN Suite" tab on Setup > General (hub §5). class_exists(..., false)
     // skips the autoloader, which would look for a nonexistent plugins/pgnsuite/.

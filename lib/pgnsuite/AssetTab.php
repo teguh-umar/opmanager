@@ -1,8 +1,9 @@
 <?php
 
 /**
- * PGN Suite — shared "PGN Suite" tab on asset forms (Computer, NetworkEquipment,
- * custom assets …), with one horizontal sub-tab per plugin section.
+ * PGN Suite — shared suite tab on asset forms (Computer, NetworkEquipment,
+ * custom assets …), with one horizontal sub-tab per plugin section. Its title is
+ * the customisable suite label (default "ICT Tools", see ConfigTab).
  *
  * CANONICAL COPY: …/Documents/PGN GLPI Suite/shared/pgnsuite/AssetTab.php
  * Every participating plugin ships this file byte-identical at lib/pgnsuite/AssetTab.php.
@@ -14,6 +15,7 @@ namespace GlpiPlugin\Pgnsuite;
 
 use CommonDBTM;
 use CommonGLPI;
+use Config;
 use Plugin;
 
 final class AssetTab extends CommonGLPI
@@ -41,9 +43,20 @@ final class AssetTab extends CommonGLPI
         }
     }
 
+    /** Same context, key and default as Menu and ConfigTab (each reads it itself). */
+    public static function label(): string
+    {
+        static $label = null;
+        if ($label === null) {
+            $value = Config::getConfigurationValues('pgnsuite', ['label'])['label'] ?? '';
+            $label = is_string($value) && trim($value) !== '' ? trim($value) : 'ICT Tools';
+        }
+        return $label;
+    }
+
     public static function getTypeName($nb = 0)
     {
-        return 'PGN Suite';
+        return self::label();
     }
 
     public function getTabNameForItem(CommonGLPI $item, $withtemplate = 0)

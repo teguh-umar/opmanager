@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+- OpManager moved into the shared sidebar menu **ICT Tools** (one menu for all PGN plugins,
+  one entry per plugin). The own top-level "OpManager" menu is gone. Devices, Alarms and
+  Coverage are now tabs at the top of each OpManager page.
+- The menu label can be changed in Setup > General > suite tab > General (default "ICT Tools").
+- Plugin author is now "ICT".
+- Ships the shared suite files Menu r1, ConfigTab r4 and AssetTab r2.
+- Log in again after the upgrade: GLPI keeps the menu in the session.
+- While other PGN plugins are not yet upgraded, they keep their own menus, and the Setup tab
+  may still be called "PGN Suite" (the first plugin loaded supplies the tab).
+
 ## 1.1.0
 
 - New Setup option **Ticket source** (tab Tickets), default **OpManager webhook criteria** (D32):

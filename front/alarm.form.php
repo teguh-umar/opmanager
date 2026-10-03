@@ -11,5 +11,5 @@ $id = (int) ($_GET['id'] ?? 0);
 if ($id <= 0) {
     Html::redirect(Alarm::getSearchURL());
 }
-$menus = ['central' => ['opmanager', 'alarm'], 'helpdesk' => []];
+$menus = ['central' => [\GlpiPlugin\Pgnsuite\Menu::SECTOR, 'opmanager', 'alarm'], 'helpdesk' => []];
 Alarm::displayFullPageForItem($id, $menus, []);

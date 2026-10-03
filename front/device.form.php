@@ -33,5 +33,5 @@ if ($id <= 0) {
     Html::redirect(Device::getSearchURL());
 }
 
-$menus = ['central' => ['opmanager', 'device'], 'helpdesk' => []];
+$menus = ['central' => [\GlpiPlugin\Pgnsuite\Menu::SECTOR, 'opmanager', 'device'], 'helpdesk' => []];
 Device::displayFullPageForItem($id, $menus, []);

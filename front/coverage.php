@@ -41,6 +41,7 @@ if (($_GET['export'] ?? '') === 'csv') {
     return;
 }
 
-Html::header(Page::getTypeName(), '', 'opmanager', 'coverage');
+Html::header(Page::getTypeName(), '', \GlpiPlugin\Pgnsuite\Menu::SECTOR, 'opmanager', 'coverage');
+\GlpiPlugin\Pgnsuite\Menu::renderSubNav('opmanager', 'coverage');
 echo View::render($report, $state, Page::getSearchURL(false));
 Html::footer();
