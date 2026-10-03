@@ -114,4 +114,15 @@ check('200 and 401 record nothing', $req->rec === []);
 $req->boom = true;
 check('a failing request store still answers 202', $mkr(null)->handle('POST', 'secret-token', $body)['status'] === 202);
 
+// Final review I1/M5: a failed run leaves a request (still 500); an unsaved request is visible.
+$req = new Req();
+$thrower = function () { throw new RuntimeException('no service user'); };
+$res = (new Receiver('secret-token', new Src($alarm), new Lock(), $thrower, $req))->handle('POST', 'secret-token', $body);
+check('500 records a request', $res['status'] === 500 && $req->rec === ['10000003244@10000024830'] && !isset($res['body']['request_not_saved']));
+$req->boom = true;
+$res = (new Receiver('secret-token', new Src($alarm), new Lock(), $thrower, $req))->handle('POST', 'secret-token', $body);
+check('500 with a failing store is still 500, flagged', $res['status'] === 500 && ($res['body']['request_not_saved'] ?? false) === true);
+$res = $mkr(null)->handle('POST', 'secret-token', $body);
+check('202 with a failing store carries request_not_saved', $res['status'] === 202 && ($res['body']['request_not_saved'] ?? false) === true);
+
 done();
