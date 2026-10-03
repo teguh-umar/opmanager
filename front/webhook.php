@@ -41,7 +41,8 @@ $receiver = new Receiver(
             new GlpiTicketGateway($cfg),
             new AlarmAssetResolver(new DbDeviceIndex(), new Matcher(new DbAssetLookup(Config::assetItemtypes())), Config::get('match_mode')),
             new RangeProductionCheck(AddressingRanges::load($cfg['production_addressings']), [AddressingRanges::class, 'assetIps']),
-            $cfg
+            $cfg,
+            new DbTicketRequestStore()
         );
         // Same context as the cron: no profile here, so without this every haveRight() is
         // false and Ticket::add() drops template SLA/OLA and recomputes the priority.
@@ -69,6 +70,9 @@ if ($summary === '' && isset($result['body']['stats']) && is_array($result['body
 }
 if (isset($result['body']['received'])) {
     $summary .= ' | received: ' . $result['body']['received'];
+}
+if (!empty($result['body']['request_not_saved'])) {
+    $summary .= ' | request NOT saved';
 }
 \Toolbox::logInFile('opmanager', sprintf(
     "Webhook: HTTP %d %s (alarm %s) from %s\n",

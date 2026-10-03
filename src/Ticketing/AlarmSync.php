@@ -61,8 +61,10 @@ final class AlarmSync
         foreach ($active as $alarm) {
             $seen[]   = $alarm['alarm_key'];
             $is_asked = isset($requested[$alarm['alarm_key']]);
-            if ($this->guarded($alarm, $now, $stats, $is_asked) && $is_asked) {
-                $this->requests->delete($alarm['alarm_key']);
+            if ($is_asked) {
+                $this->processRequested($alarm, $now, $stats);
+            } else {
+                $this->guarded($alarm, $now, $stats, false);
             }
         }
 
@@ -73,7 +75,10 @@ final class AlarmSync
                 continue;
             }
             if ($current !== null && $current['alarm_key'] === $row['alarm_key'] && (int) $current['severity'] === self::CLEAR) {
-                $this->guarded($current, $now, $stats, false);
+                if ($this->guarded($current, $now, $stats, false)) {
+                    // M1: a deferred Clear must not leave a request that a later activation would inherit.
+                    $this->requests?->delete($current['alarm_key']);
+                }
             }
         }
 
@@ -93,8 +98,23 @@ final class AlarmSync
         $this->errors = [];
         $stats = array_fill_keys(['fetched', 'created', 'joined', 'storm', 'reopened', 'restored', 'followups', 'cleared', 'solved', 'pending', 'stored', 'linked', 'errors'], 0);
         $stats['fetched'] = 1;
-        $this->guarded($alarm, $now, $stats, true);
+        $this->processRequested($alarm, $now, $stats);
         return $stats;
+    }
+
+    /**
+     * A requested alarm (webhook or deferred request, §16.2): a failure or a pending ticket
+     * keeps/records the request so the next run retries; only a clean result consumes it (§16.4).
+     */
+    private function processRequested(array $alarm, string $now, array &$stats): void
+    {
+        $pending = $stats['pending'];
+        $ok      = $this->guarded($alarm, $now, $stats, true);
+        if (!$ok || $stats['pending'] > $pending) {
+            $this->requests?->record($alarm['alarm_key'], (string) ($alarm['entity_key'] ?? ''));
+        } else {
+            $this->requests?->delete($alarm['alarm_key']);
+        }
     }
 
     /** @return list<string> "alarm <key>: <message>" for every alarm that failed in the last run */

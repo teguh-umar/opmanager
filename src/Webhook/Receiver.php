@@ -82,7 +82,8 @@ final class Receiver
             }
             $stats = ($this->runner)($alarm);
         } catch (\Throwable $e) {
-            return self::reply(500, 'processing failed', $alarm_id);
+            // The next AlarmSync run retries it as a webhook (spec §16.4); the status stays 500.
+            return $this->defer('processing failed', $alarm_id, $entity, 500);
         } finally {
             $this->lock->release();
         }
@@ -92,17 +93,23 @@ final class Receiver
 
     /**
      * D32: a deferred webhook is still a webhook - the next AlarmSync run handles it as one.
-     * A failing store must not turn the 202 into a 500: the alarm is still polled.
+     * A failing store must not change the status: the alarm is still polled (flagged request_not_saved).
      *
      * @return array{status: int, body: array<string, mixed>}
      */
-    private function defer(string $message, string $alarm_id, string $entity): array
+    private function defer(string $message, string $alarm_id, string $entity, int $status = 202): array
     {
+        $saved = true;
         try {
             $this->requests?->record($alarm_id, $entity);
         } catch (\Throwable) {
+            $saved = false;     // swallowed, but visible in the reply (and so in the log)
         }
-        return self::reply(202, $message, $alarm_id);
+        $reply = self::reply($status, $message, $alarm_id);
+        if (!$saved) {
+            $reply['body']['request_not_saved'] = true;
+        }
+        return $reply;
     }
 
     /** @return array{status: int, body: array<string, mixed>} */

@@ -438,4 +438,50 @@ $gw->status[100] = TicketGateway::TRASHED; $gw->merged[100] = 300; $gw->log = []
 $sync->processOne($al('m3', 2, 'srv-p'), '2026-09-30 11:30:00');
 check('merge target purged: alarm stays on the old ticket', $store->find('m3')['tickets_id'] === 100 && $gw->log === []);
 
+// Final review I1/M1: a webhook that failed or went pending leaves a request; success consumes it.
+$req = new Req();
+[$sync, $src, $store, $gw] = $mkw([], $req);
+$gw->failCreate = true;
+$sync->processOne($al('p1', 1, 'srv-p1'), $now);
+check('I1: webhook create returning 0 (pending) leaves a request', isset($req->at['p1']) && $store->find('p1')['tickets_id'] === 0);
+$gw->failCreate = false;
+$src->active = [$al('p1', 1, 'srv-p1')];
+$sync->run($now);
+check('I1: the next run creates the ticket and empties the requests', $store->find('p1')['tickets_id'] > 0 && $req->at === []);
+
+$req = new Req();
+[$sync, $src, $store, $gw] = $mkw([], $req);
+$sync->processOne($al('q1', 1, 'srv-q1'), $now);
+$gw->throwOn = [100];
+$sync->processOne($al('q2', 1, 'srv-q1'), $now);
+check('I1: webhook whose followup throws leaves a request', isset($req->at['q2']) && !isset($req->at['q1']));
+
+$req = new Req(); $req->record('w1', 'Ew1');
+[$sync, $src, $store, $gw] = $mkw([$al('w1', 1, 'srv-w1')], $req);
+$gw->failCreate = true;
+$stats = $sync->run($now);
+check('I1: run() keeps the request when create is pending', isset($req->at['w1']) && $stats['pending'] === 1);
+
+$req = new Req(); $req->record('d1', 'Ed1');
+[$sync, $src, $store, $gw] = $mkw([], $req);
+$sync->processOne($al('d1', 1, 'srv-d1'), $now);
+check('I1: successful webhook deletes a pre-existing request', $req->at === []);
+
+$req = new Req();
+[$sync, $src, $store, $gw] = $mkw([], $req);
+$sync->processOne($al('c1', 1, 'srv-c1'), $now);
+$req->record('c1', 'Ec1');
+$src->active = [];
+$src->byEntity = ['Ec1' => $al('c1', 5, 'srv-c1')];
+$sync->run('2026-09-30 10:10:00');
+check('M1: confirmed Clear deletes a lingering request', $req->at === [] && in_array('solve 100', $gw->log, true));
+
+// M4: merge follow also in rules mode.
+[$sync, $src, $store, $gw] = $mk([$al('rm1', 1, 'srv-rm', 'CPU 91')]);
+$sync->run($now);
+$gw->status[100] = TicketGateway::TRASHED; $gw->merged[100] = 200; $gw->status[200] = 2; $gw->log = [];
+$src->active = [$al('rm1', 3, 'srv-rm', 'CPU 91')];
+$sync->run('2026-09-30 11:30:00');
+check('M4: rules mode follows a merge too', $store->find('rm1')['tickets_id'] === 200 && $gw->log === ['followup 200']);
+
 done();

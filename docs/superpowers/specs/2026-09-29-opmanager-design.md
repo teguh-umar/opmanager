@@ -530,7 +530,10 @@ VARCHAR(255) UNIQUE, `entity_key` VARCHAR(255), `date_creation`, `date_mod` TIME
 
 - Receiver mencatat (upsert) permintaan setiap kali menjawab **202** dengan `alarm_id`
   dan `entity` yang valid: sync terkunci, API OpManager gagal, atau alarm belum terbaca di
-  entity itu. Jawaban 200/4xx/5xx tidak mencatat apa pun.
+  entity itu, dan juga setiap kali menjawab **500** (gagal diproses). Jawaban 200/4xx
+  tidak mencatat apa pun. Penyimpanan yang gagal tidak mengubah status HTTP; balasan
+  memuat `request_not_saved`.
+- Alarm webhook yang gagal diproses atau tertunda (pending) mendapat/menyimpan permintaan; permintaan dihapus hanya setelah alarm diproses tanpa error dan tidak pending.
 - `AlarmSync::run` membaca permintaan sebelum loop. Alarm aktif yang ada di daftar
   diproses sebagai *diminta webhook*; permintaannya dihapus setelah alarm itu diproses
   tanpa error (apa pun keputusannya).
