@@ -43,7 +43,7 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 - [ ] Filter **Hygiene condition = Unmanaged, dead**. Each row's evidence is plausible (agent silent for weeks, Mist disconnected, TCP no answer).
 - [ ] Filter **Unmanaged, still alive**. Unmanaged devices that are still in GLPI appear here if their agent still reports.
 - [ ] Filter **Monitored, not in GLPI**. Expect devices with "Not found in GLPI" that OpManager still monitors.
-- [ ] Open a device such as 127.0.0.1. Exclude it with a reason. The condition becomes "Excluded from hygiene tickets" at once. Cancel the exclusion: the history keeps both lines.
+- [ ] Open a device such as 127.0.0.1. Exclude it with a reason. The condition becomes "Excluded from hygiene tickets" at once. Cancel the exclusion: the history row keeps who excluded it, when and why, and who cancelled it and when.
 
 ## 5. Turn tickets on
 
