@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.3.0-rc1
+
+- New **NMS hygiene** (D34). GLPI is the asset source of truth; OpManager only monitors.
+  - Every device gets a hygiene condition:
+    - monitored but not in GLPI;
+    - monitored, needs manual pairing;
+    - unmanaged and dead;
+    - unmanaged with unknown liveness;
+    - unmanaged but still alive;
+    - fine;
+    - excluded.
+  - Weekly Request tickets, one per team:
+    - **not in GLPI:** assigned to the GLPI and asset team groups, with the NMS team as observer;
+    - **unmanaged, dead or unknown:** assigned to the NMS team, who remove the device from OpManager.
+  - While a ticket is open, later runs add a followup with only the changes. A new ticket is created
+    only after the previous one is solved, closed or deleted.
+  - Unmanaged devices proven alive get no ticket, because they are taken to be unmanaged on purpose (licence limit).
+  - Liveness comes from the GLPI agent's last contact, the Juniper Mist plugin, and a TCP probe
+    limited to the segments you list. Other plugins (e.g. a future FortiCloud plugin) can add
+    sources through the `opmanager_liveness` hook.
+  - Each device can be excluded from these tickets, with a required reason. Who and when is kept,
+    and the exclusion can be cancelled. Needs the new right **OpManager hygiene** (Update).
+  - The plugin never deletes or changes anything in OpManager.
+- New Setup tab **NMS hygiene**, a status badge, and Devices list columns and filters:
+  hygiene condition, liveness, evidence, liveness checked.
+- **Hygiene tickets are off after the upgrade.** Review the classification for a week, then
+  turn them on (see `docs/runbook-v1.3.0.md`).
+- New daily cron task `HygieneCheck` (CLI).
+
 ## 1.2.0
 
 - OpManager moved into the shared sidebar menu **ICT Tools** (one menu for all PGN plugins,

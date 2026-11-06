@@ -31,13 +31,36 @@ function plugin_opmanager_install()
             `match_source` VARCHAR(16) NOT NULL DEFAULT '',
             `is_manual` TINYINT NOT NULL DEFAULT 0,
             `last_seen` TIMESTAMP NULL DEFAULT NULL,
+            `liveness_state` VARCHAR(16) NOT NULL DEFAULT '',
+            `liveness_source` VARCHAR(32) NOT NULL DEFAULT '',
+            `liveness_detail` VARCHAR(255) NOT NULL DEFAULT '',
+            `liveness_checked_at` TIMESTAMP NULL DEFAULT NULL,
+            `hygiene_state` VARCHAR(16) NOT NULL DEFAULT '',
             `date_creation` TIMESTAMP NULL DEFAULT NULL,
             `date_mod` TIMESTAMP NULL DEFAULT NULL,
             PRIMARY KEY (`id`),
             UNIQUE KEY `device_key` (`device_key`),
             KEY `item` (`itemtype`, `items_id`),
-            KEY `match_state` (`match_state`)
+            KEY `match_state` (`match_state`),
+            KEY `hygiene_state` (`hygiene_state`)
         ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
+    // v1.3.0 (D34): hygiene columns on an existing devices table.
+    $hygiene_columns = [
+        'liveness_state'      => 'VARCHAR(16) NOT NULL DEFAULT \'\'',
+        'liveness_source'     => 'VARCHAR(32) NOT NULL DEFAULT \'\'',
+        'liveness_detail'     => 'VARCHAR(255) NOT NULL DEFAULT \'\'',
+        'liveness_checked_at' => 'TIMESTAMP NULL DEFAULT NULL',
+        'hygiene_state'       => 'VARCHAR(16) NOT NULL DEFAULT \'\'',
+    ];
+    foreach ($hygiene_columns as $col => $ddl) {
+        if (!$DB->fieldExists($table, $col)) {
+            $DB->doQuery("ALTER TABLE `$table` ADD `$col` $ddl");
+            if ($col === 'hygiene_state') {
+                $DB->doQuery("ALTER TABLE `$table` ADD KEY `hygiene_state` (`hygiene_state`)");
+            }
+        }
     }
 
     $table = 'glpi_plugin_opmanager_alarms';
@@ -132,6 +155,56 @@ function plugin_opmanager_install()
         ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
     }
 
+    // v1.3.0 (D34): NMS hygiene - exceptions (history kept), hygiene tickets and their devices.
+    $table = 'glpi_plugin_opmanager_deviceexceptions';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `device_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `reason` TEXT NULL,
+            `users_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `is_active` TINYINT NOT NULL DEFAULT 1,
+            `revoked_by` INT UNSIGNED NOT NULL DEFAULT 0,
+            `revoked_at` TIMESTAMP NULL DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `device_key` (`device_key`),
+            KEY `is_active` (`is_active`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
+    $table = 'glpi_plugin_opmanager_hygienetickets';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `flow` VARCHAR(8) NOT NULL DEFAULT '',
+            `tickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `last_report_at` TIMESTAMP NULL DEFAULT NULL,
+            `date_creation` TIMESTAMP NULL DEFAULT NULL,
+            `date_mod` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            KEY `flow` (`flow`),
+            KEY `tickets_id` (`tickets_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
+    $table = 'glpi_plugin_opmanager_hygieneitems';
+    if (!$DB->tableExists($table)) {
+        $DB->doQuery("CREATE TABLE `$table` (
+            `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+            `plugin_opmanager_hygienetickets_id` INT UNSIGNED NOT NULL DEFAULT 0,
+            `device_key` VARCHAR(255) NOT NULL DEFAULT '',
+            `hygiene_state` VARCHAR(16) NOT NULL DEFAULT '',
+            `reported_at` TIMESTAMP NULL DEFAULT NULL,
+            `changed_at` TIMESTAMP NULL DEFAULT NULL,
+            `resolved_at` TIMESTAMP NULL DEFAULT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `ticket_device` (`plugin_opmanager_hygienetickets_id`, `device_key`),
+            KEY `device_key` (`device_key`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=$charset COLLATE=$collation");
+    }
+
     Config::setDefaults();
 
     // setDefaults() never touches a stored value, so move an untouched old default
@@ -184,6 +257,11 @@ function plugin_opmanager_install()
         'mode'    => CronTask::MODE_EXTERNAL,
         'state'   => CronTask::STATE_WAITING,
         'comment' => 'Send queued notes/clears to OpManager (retries)',
+    ]);
+    CronTask::register(Cron::class, 'HygieneCheck', Config::HYGIENE_CRON_MINUTES * MINUTE_TIMESTAMP, [
+        'mode'    => CronTask::MODE_EXTERNAL,
+        'state'   => CronTask::STATE_WAITING,
+        'comment' => 'OpManager NMS hygiene: liveness, classification, tickets',
     ]);
 
     return true;

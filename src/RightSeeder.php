@@ -32,6 +32,8 @@ final class RightSeeder
                 $rights[$name] = match ($name) {
                     RightDefinition::CONFIG     => $profile['config'] & (READ | UPDATE),
                     RightDefinition::MONITORING => $profile['computer'] & READ,
+                    // UPDATE (exceptions) is granted by hand to the NMS and GLPI team profiles.
+                    RightDefinition::HYGIENE    => $profile['computer'] & READ,
                     default                     => 0,
                 };
             }

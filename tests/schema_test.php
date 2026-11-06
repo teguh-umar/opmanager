@@ -43,4 +43,24 @@ check('install creates glpi_plugin_opmanager_ticketrequests', in_array('glpi_plu
 check('ticketrequests.alarm_key is UNIQUE', (bool) preg_match('/ticketrequests.*?UNIQUE KEY `alarm_key` \(`alarm_key`\)/s', $src));
 check('uninstall drops ticketrequests', str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), 'glpi_plugin_opmanager_ticketrequests'));
 
+// v1.3.0 (D34): NMS hygiene.
+foreach (['glpi_plugin_opmanager_deviceexceptions', 'glpi_plugin_opmanager_hygienetickets', 'glpi_plugin_opmanager_hygieneitems'] as $t) {
+    check("install creates {$t}", in_array($t, array_column($tables, 1), true));
+    check("uninstall drops {$t}", str_contains((string) file_get_contents(OPM_ROOT . '/install/uninstall.php'), $t));
+}
+$devices_ddl = '';
+foreach ($tables as [, $table, $body]) {
+    if ($table === 'glpi_plugin_opmanager_devices') {
+        $devices_ddl = $body;
+    }
+}
+foreach (['liveness_state', 'liveness_source', 'liveness_detail', 'liveness_checked_at', 'hygiene_state'] as $col) {
+    check("devices CREATE has {$col}", str_contains($devices_ddl, "`{$col}`"));
+    check("devices upgrade adds {$col}", (bool) preg_match("/'{$col}'\s+=> '/", $src));
+}
+check('upgrade ALTER is guarded by fieldExists', str_contains($src, 'if (!$DB->fieldExists($table, $col))'));
+check('liveness_source holds a 32-char provider name', str_contains($src, '`liveness_source` VARCHAR(32)'));
+check('hygieneitems one row per ticket and device', (bool) preg_match('/hygieneitems.*?UNIQUE KEY `ticket_device` \(`plugin_opmanager_hygienetickets_id`, `device_key`\)/s', $src));
+check('HygieneCheck cron registered in CLI mode', str_contains($src, "'HygieneCheck', Config::HYGIENE_CRON_MINUTES * MINUTE_TIMESTAMP"));
+
 done();

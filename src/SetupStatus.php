@@ -28,7 +28,7 @@ final class SetupStatus
         };
 
         $outbox = $f['outbox_failed'] > 0 ? 'error' : ($f['outbox_pending'] > 0 ? 'warn' : 'ok');
-        return [
+        $items  = [
             ['key' => 'api', 'label' => __('API key', 'opmanager'), 'level' => $f['api_key_set'] ? 'ok' : 'error',
              'text' => $f['api_key_set'] ? __('stored', 'opmanager') : __('not set', 'opmanager')],
             $sync('devices', __('Device sync', 'opmanager'), $f['last_device_sync'], $f['last_device_sync_error'], $f['stale_minutes']),
@@ -37,6 +37,16 @@ final class SetupStatus
             ['key' => 'outbox', 'label' => __('To OpManager', 'opmanager'), 'level' => $outbox,
              'text' => sprintf(__('%d waiting, %d given up', 'opmanager'), $f['outbox_pending'], $f['outbox_failed'])],
         ];
+        // D34: daily HygieneCheck; a run older than two days means the cron is not running.
+        if (array_key_exists('hygiene_enabled', $f)) {
+            $label = __('NMS hygiene', 'opmanager');
+            $item  = $sync('hygiene', $label, (string) $f['last_hygiene_run'], (string) $f['last_hygiene_error'], 2 * 1440);
+            if ($item['level'] === 'ok' && !$f['hygiene_enabled']) {
+                $item = ['key' => 'hygiene', 'label' => $label, 'level' => 'warn', 'text' => __('tickets off', 'opmanager')];
+            }
+            $items[] = $item;
+        }
+        return $items;
     }
 
     /** D32: in webhook mode a missing token means no new ticket at all. */

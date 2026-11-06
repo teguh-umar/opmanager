@@ -19,7 +19,9 @@ $plan = RightSeeder::plan(R::names(), $profiles);
 check('fresh: super-admin gets full mask', ($plan[4] ?? null) === R::ALL);
 check('fresh: technician config mirrors core config', ($plan[6][R::CONFIG] ?? null) === READ);
 check('fresh: technician monitoring from computer READ', ($plan[6][R::MONITORING] ?? null) === READ);
-check('fresh: profile without core rights gets zeros', ($plan[7] ?? null) === [R::CONFIG => 0, R::MONITORING => 0]);
+check('fresh: profile without core rights gets zeros', ($plan[7] ?? null) === [R::CONFIG => 0, R::MONITORING => 0, R::HYGIENE => 0]);
+check('hygiene right mask is READ|UPDATE', (R::ALL[R::HYGIENE] ?? null) === (READ | UPDATE));
+check('fresh: technician hygiene READ from computer READ', ($plan[6][R::HYGIENE] ?? null) === READ);
 check('fresh: helpdesk untouched', !isset($plan[1]));
 
 // Upgrade: nothing new. Only super-admin is (re)written - hub §4 exception.
