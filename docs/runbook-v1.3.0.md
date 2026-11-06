@@ -21,7 +21,7 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 
 ## 2. Rights
 
-- [ ] Administration > Profiles > profile of the **NMS team**: OpManager hygiene = Read + Update.
+- [ ] Administration > Profiles > profile of the **NMS team**: OpManager > **NMS hygiene** = Read + Update.
 - [ ] Same for the profile of the **GLPI team**.
 - [ ] Super-admin already has the full right. Technician profiles have Read.
 
