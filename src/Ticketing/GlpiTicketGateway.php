@@ -83,7 +83,7 @@ final class GlpiTicketGateway implements TicketGateway
     public function followup(int $tickets_id, string $text): void
     {
         $this->asPlugin(function () use ($tickets_id, $text): void {
-            $this->withoutAutoAssign(function () use ($tickets_id, $text) {
+            self::withoutAutoAssign(function () use ($tickets_id, $text) {
                 (new \ITILFollowup())->add([
                     'itemtype'   => \Ticket::class,
                     'items_id'   => $tickets_id,
@@ -99,7 +99,7 @@ final class GlpiTicketGateway implements TicketGateway
     public function reopen(int $tickets_id, string $text): void
     {
         $this->asPlugin(function () use ($tickets_id, $text): void {
-            $this->withoutAutoAssign(function () use ($tickets_id, $text) {
+            self::withoutAutoAssign(function () use ($tickets_id, $text) {
                 (new \ITILFollowup())->add([
                     'itemtype'   => \Ticket::class,
                     'items_id'   => $tickets_id,
@@ -238,7 +238,7 @@ final class GlpiTicketGateway implements TicketGateway
      * global "add me as technician on followup" option is on - that would assign
      * the service account to every alarm ticket. Switch it off around our own add.
      */
-    private function withoutAutoAssign(callable $fn): void
+    public static function withoutAutoAssign(callable $fn): void
     {
         $had   = array_key_exists('glpiset_followup_tech', $_SESSION);
         $saved = $_SESSION['glpiset_followup_tech'] ?? null;
