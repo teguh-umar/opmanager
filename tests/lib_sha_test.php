@@ -16,4 +16,10 @@ foreach ($expected as $rel => $sha) {
     check("{$rel} is canonical", $actual === $sha, "got {$actual}");
 }
 
+// SelfCheck on the VM must expect the same SHAs as the shipped files (1.2.0 kept r3/r2 there).
+$selfcheck = (string) file_get_contents(OPM_ROOT . '/src/SelfCheck.php');
+foreach ($expected as $rel => $sha) {
+    check('SelfCheck expects ' . basename($rel) . ' canonical SHA', str_contains($selfcheck, "'" . basename($rel) . "' => '{$sha}'") || str_contains($selfcheck, "'" . basename($rel) . "'  => '{$sha}'") || str_contains($selfcheck, "'" . basename($rel) . "'      => '{$sha}'"));
+}
+
 done();

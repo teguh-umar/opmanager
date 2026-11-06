@@ -40,4 +40,15 @@ final class RightDefinition
             default          => [],
         };
     }
+
+    /** Row label in the Profile rights matrix; one per right. */
+    public static function label(string $name): string
+    {
+        return match ($name) {
+            self::CONFIG     => __('Configuration'),
+            self::MONITORING => __('Monitoring', 'opmanager'),
+            self::HYGIENE    => __('NMS hygiene', 'opmanager'),
+            default          => $name,
+        };
+    }
 }
