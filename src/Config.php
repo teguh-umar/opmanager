@@ -86,7 +86,25 @@ final class Config
         'ticket_filter_keywords'      => '',
         'last_alarm_sync'             => '',
         'last_alarm_sync_error'       => '',
+        // v1.3.0 (D34) NMS hygiene, spec §8.4.
+        'hygiene_enabled'                  => '0',
+        'hygiene_frequency_days'           => '7',
+        'hygiene_unmanaged_availabilities' => '["UnManaged","Device Not Monitored."]',
+        'hygiene_agent_stale_days'         => '7',
+        'hygiene_mist_stale_days'          => '7',
+        'hygiene_probe_cidrs'              => '[]',
+        'hygiene_probe_tcp_ports'          => '[22,443,80,3389,161]',
+        'hygiene_probe_timeout_ms'         => '1000',
+        'hygiene_ticket_template'          => '0',
+        'hygiene_glpi_groups'              => '[]',
+        'hygiene_nms_group'                => '0',
+        'last_hygiene_run'                 => '',
+        'last_hygiene_ticket_run'          => '',
+        'last_hygiene_error'               => '',
     ];
+
+    /** HygieneCheck frequency: daily; tickets follow hygiene_frequency_days (spec §7). */
+    public const HYGIENE_CRON_MINUTES = 1440;
 
     public static function get(string $key): string
     {
