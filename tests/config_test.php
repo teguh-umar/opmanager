@@ -63,7 +63,7 @@ check('stale default exceeds the device sync interval', (int) Config::DEFAULTS['
 check('install registers DeviceSync from the same interval constant', str_contains((string) file_get_contents(OPM_ROOT . '/install/install.php'), 'Config::DEVICE_SYNC_MINUTES'));
 
 // --- rights ---
-check('two rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring']);
+check('three rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring', 'plugin_opmanager_hygiene']);
 check('config right is READ|UPDATE', RightDefinition::ALL[RightDefinition::CONFIG] === (READ | UPDATE));
 check('monitoring right is READ only', RightDefinition::ALL[RightDefinition::MONITORING] === READ);
 check('matrix columns match masks', array_keys(RightDefinition::rightsMatrix(RightDefinition::MONITORING)) === [READ]);
@@ -158,5 +158,15 @@ check('ticket source defaults to webhook', Config::DEFAULTS['ticket_source'] ===
 check('ticket source rules accepted', Config::sanitizeTicketing(['ticket_source' => 'rules'] + $t)['values']['ticket_source'] === 'rules');
 check('unknown ticket source falls back to webhook', Config::sanitizeTicketing(['ticket_source' => 'x'] + $t)['values']['ticket_source'] === 'webhook');
 
-done();
 
+// --- v1.3.0 (D34) hygiene defaults, spec §8.4 ---
+foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups', 'hygiene_nms_group', 'last_hygiene_run', 'last_hygiene_ticket_run', 'last_hygiene_error'] as $k) {
+    check("default exists: {$k}", array_key_exists($k, Config::DEFAULTS));
+}
+check('unmanaged availabilities default', json_decode(Config::DEFAULTS['hygiene_unmanaged_availabilities'] ?? '', true) === ['UnManaged', 'Device Not Monitored.']);
+check('hygiene tickets off by default', (Config::DEFAULTS['hygiene_enabled'] ?? null) === '0');
+check('hygiene weekly by default', (Config::DEFAULTS['hygiene_frequency_days'] ?? null) === '7');
+check('probe off by default (no CIDR)', (Config::DEFAULTS['hygiene_probe_cidrs'] ?? null) === '[]');
+check('hygiene cron is daily', Config::HYGIENE_CRON_MINUTES === 1440);
+
+done();
