@@ -3,6 +3,7 @@
 require __DIR__ . '/bootstrap.php';
 require OPM_ROOT . '/src/Config.php';
 require OPM_ROOT . '/src/RightDefinition.php';
+require OPM_ROOT . '/src/Hygiene/Cidr.php';
 
 use GlpiPlugin\Opmanager\Config;
 use GlpiPlugin\Opmanager\RightDefinition;
@@ -63,7 +64,7 @@ check('stale default exceeds the device sync interval', (int) Config::DEFAULTS['
 check('install registers DeviceSync from the same interval constant', str_contains((string) file_get_contents(OPM_ROOT . '/install/install.php'), 'Config::DEVICE_SYNC_MINUTES'));
 
 // --- rights ---
-check('two rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring']);
+check('three rights', RightDefinition::names() === ['plugin_opmanager_config', 'plugin_opmanager_monitoring', 'plugin_opmanager_hygiene']);
 check('config right is READ|UPDATE', RightDefinition::ALL[RightDefinition::CONFIG] === (READ | UPDATE));
 check('monitoring right is READ only', RightDefinition::ALL[RightDefinition::MONITORING] === READ);
 check('matrix columns match masks', array_keys(RightDefinition::rightsMatrix(RightDefinition::MONITORING)) === [READ]);
@@ -158,5 +159,50 @@ check('ticket source defaults to webhook', Config::DEFAULTS['ticket_source'] ===
 check('ticket source rules accepted', Config::sanitizeTicketing(['ticket_source' => 'rules'] + $t)['values']['ticket_source'] === 'rules');
 check('unknown ticket source falls back to webhook', Config::sanitizeTicketing(['ticket_source' => 'x'] + $t)['values']['ticket_source'] === 'webhook');
 
-done();
 
+// --- v1.3.0 (D34) hygiene defaults, spec §8.4 ---
+foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups', 'hygiene_nms_group', 'last_hygiene_run', 'last_hygiene_ticket_run', 'last_hygiene_error'] as $k) {
+    check("default exists: {$k}", array_key_exists($k, Config::DEFAULTS));
+}
+check('unmanaged availabilities default', json_decode(Config::DEFAULTS['hygiene_unmanaged_availabilities'] ?? '', true) === ['UnManaged', 'Device Not Monitored.']);
+check('hygiene tickets off by default', (Config::DEFAULTS['hygiene_enabled'] ?? null) === '0');
+check('hygiene weekly by default', (Config::DEFAULTS['hygiene_frequency_days'] ?? null) === '7');
+check('probe off by default (no CIDR)', (Config::DEFAULTS['hygiene_probe_cidrs'] ?? null) === '[]');
+check('hygiene cron is daily', Config::HYGIENE_CRON_MINUTES === 1440);
+
+
+// --- v1.3.0 (D34) hygiene settings ---
+$h = [
+    'hygiene_enabled' => '1', 'hygiene_frequency_days' => '7', 'hygiene_unmanaged_availabilities' => "UnManaged\r\nDevice Not Monitored.\r\n",
+    'hygiene_agent_stale_days' => '7', 'hygiene_mist_stale_days' => '14', 'hygiene_probe_cidrs' => "10.20.0.0/16\n192.168.50.0/24",
+    'hygiene_probe_tcp_ports' => '22, 443,22', 'hygiene_probe_timeout_ms' => '1000', 'hygiene_ticket_template' => '3',
+    'hygiene_glpi_groups' => ['11', '12'], 'hygiene_nms_group' => '20',
+];
+$r = Config::sanitizeHygiene($h);
+check('hygiene: valid post has no error', $r['errors'] === [], implode('; ', $r['errors']));
+check('hygiene: enabled stored', ($r['values']['hygiene_enabled'] ?? null) === '1');
+check('hygiene: CRLF lines normalised to a JSON list', ($r['values']['hygiene_unmanaged_availabilities'] ?? null) === '["UnManaged","Device Not Monitored."]');
+check('hygiene: cidrs stored as JSON', ($r['values']['hygiene_probe_cidrs'] ?? null) === '["10.20.0.0/16","192.168.50.0/24"]');
+check('hygiene: ports unique ints', ($r['values']['hygiene_probe_tcp_ports'] ?? null) === '[22,443]');
+check('hygiene: groups as int JSON', ($r['values']['hygiene_glpi_groups'] ?? null) === '[11,12]' && ($r['values']['hygiene_nms_group'] ?? null) === '20');
+check('hygiene: mist stale stored', ($r['values']['hygiene_mist_stale_days'] ?? null) === '14');
+$r = Config::sanitizeHygiene(['hygiene_frequency_days' => '0'] + $h);
+check('hygiene: frequency 0 refused, value kept', $r['errors'] !== [] && !array_key_exists('hygiene_frequency_days', $r['values']));
+$r = Config::sanitizeHygiene(['hygiene_probe_cidrs' => "10.0.0.0/33"] + $h);
+check('hygiene: bad CIDR named in the error', $r['errors'] !== [] && str_contains(implode(' ', $r['errors']), '10.0.0.0/33') && !array_key_exists('hygiene_probe_cidrs', $r['values']));
+$r = Config::sanitizeHygiene(['hygiene_probe_tcp_ports' => '70000'] + $h);
+check('hygiene: port out of range refused', $r['errors'] !== [] && !array_key_exists('hygiene_probe_tcp_ports', $r['values']));
+$r = Config::sanitizeHygiene(['hygiene_probe_tcp_ports' => '1,2,3,4,5,6,7,8,9,10,11'] + $h);
+check('hygiene: more than 10 ports refused', $r['errors'] !== []);
+$r = Config::sanitizeHygiene(['hygiene_unmanaged_availabilities' => "  \n "] + $h);
+check('hygiene: empty unmanaged list refused', $r['errors'] !== [] && !array_key_exists('hygiene_unmanaged_availabilities', $r['values']));
+$r = Config::sanitizeHygiene(['hygiene_glpi_groups' => []] + $h);
+check('hygiene: enabled without GLPI groups is an error and stays off', $r['errors'] !== [] && ($r['values']['hygiene_enabled'] ?? null) === '0');
+$r = Config::sanitizeHygiene(['hygiene_nms_group' => '0'] + $h);
+check('hygiene: enabled without NMS group is an error and stays off', $r['errors'] !== [] && ($r['values']['hygiene_enabled'] ?? null) === '0');
+$r = Config::sanitizeHygiene(['hygiene_enabled' => '0', 'hygiene_glpi_groups' => [], 'hygiene_nms_group' => '0'] + $h);
+check('hygiene: disabled without groups is fine', $r['errors'] === []);
+$r = Config::sanitizeHygiene(['hygiene_probe_timeout_ms' => '50'] + $h);
+check('hygiene: timeout below 100 ms refused', $r['errors'] !== []);
+
+done();

@@ -104,6 +104,29 @@ final class SelfCheck
                 $missing = (new DbAssetLookup(Config::assetItemtypes()))->missingItemtypes();
                 self::assert($missing === [], 'configured asset types not loadable here: ' . implode(', ', $missing));
             },
+            'hygiene/schema' => static function (): void {
+                global $DB;
+                foreach (['glpi_plugin_opmanager_deviceexceptions', 'glpi_plugin_opmanager_hygienetickets', 'glpi_plugin_opmanager_hygieneitems'] as $t) {
+                    self::assert($DB->tableExists($t), "{$t} missing - re-run plugin:install");
+                }
+                foreach (['liveness_state', 'liveness_source', 'liveness_detail', 'liveness_checked_at', 'hygiene_state'] as $col) {
+                    self::assert($DB->fieldExists(Device::getTable(), $col), "devices.{$col} missing - re-run plugin:install");
+                }
+            },
+            'hygiene/cron-cli' => static function (): void {
+                $task = new \CronTask();
+                self::assert($task->getFromDBbyName(Cron::class, 'HygieneCheck'), 'HygieneCheck cron not registered - re-run plugin:install');
+                self::assert((int) $task->fields['mode'] === \CronTask::MODE_EXTERNAL, 'HygieneCheck is not in CLI mode');
+            },
+            'hygiene/groups' => static function (): void {
+                $cfg = Config::hygieneConfig();
+                if (!$cfg['enabled']) {
+                    return;
+                }
+                foreach (array_merge($cfg['glpi_groups'], [$cfg['nms_group']]) as $gid) {
+                    self::assert((new \Group())->getFromDB($gid), "hygiene group {$gid} not found");
+                }
+            },
             'matching/lookup-smoke' => static function (): void {
                 $lookup = new DbAssetLookup(Config::assetItemtypes());
                 self::assert($lookup->byName('__opmanager_selfcheck_no_such_asset__') === [], 'name lookup returned rows for a nonsense name');

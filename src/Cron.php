@@ -32,6 +32,7 @@ final class Cron extends \CommonGLPI
             'DeviceSync' => ['description' => __('Sync OpManager devices and match them to GLPI assets', 'opmanager')],
             'AlarmSync'  => ['description' => __('Pull active OpManager alarms and create/update tickets', 'opmanager')],
             'OutboxSend' => ['description' => __('Send queued notes and clears to OpManager', 'opmanager')],
+            'HygieneCheck' => ['description' => __('NMS hygiene: liveness of unmanaged devices, classification, weekly tickets', 'opmanager')],
             default      => [],
         };
     }
@@ -135,6 +136,60 @@ final class Cron extends \CommonGLPI
         Config::set(['last_alarm_sync' => $now, 'last_alarm_sync_error' => substr(implode(' | ', $problems), 0, 1000)]);
         $task->addVolume($stats['fetched']);
         $task->log(implode(', ', array_map(fn ($k, $v) => "{$k} {$v}", array_keys($stats), $stats)));
+        return 1;
+    }
+
+    /** D34: daily NMS hygiene; tickets every hygiene_frequency_days (spec §7). */
+    public static function cronHygieneCheck(\CronTask $task): int
+    {
+        $now = (string) \Session::getCurrentTime();
+        $cfg = Config::hygieneConfig();
+        $tcf = Config::ticketingConfig();
+
+        $last = Config::get('last_hygiene_ticket_run');
+        $due  = $last === '' || strtotime($now) >= strtotime($last) + $cfg['frequency_days'] * 86400;
+        if ($due && $cfg['enabled'] && $tcf['service_user'] <= 0) {
+            $msg = 'no service user configured in Setup; hygiene tickets would have no author';
+            Config::set(['last_hygiene_error' => $msg]);
+            $task->log($msg);
+            return 0;
+        }
+
+        $run = new \GlpiPlugin\Opmanager\Hygiene\HygieneRun(
+            new \GlpiPlugin\Opmanager\Hygiene\DbHygieneStore(),
+            \GlpiPlugin\Opmanager\Hygiene\Providers::all($cfg),
+            new \GlpiPlugin\Opmanager\Hygiene\GlpiHygieneGateway(['service_user' => $tcf['service_user'], 'entity_default' => $tcf['entity_default']]),
+            $cfg + [
+                'service_user'   => $tcf['service_user'],
+                'entity_default' => $tcf['entity_default'],
+                'list_url'       => Device::getSearchURL(true),
+                // Final review #3: no ticket run on stale OpManager data.
+                'device_data_fresh' => Config::get('last_device_sync_error') === ''
+                    && Config::get('last_device_sync') !== ''
+                    && strtotime($now) - strtotime(Config::get('last_device_sync')) <= 60 * max(1, (int) Config::get('stale_warning_minutes')),
+            ]
+        );
+        $stats = $run->run($now, $due);
+
+        foreach ($stats['errors'] as $error) {
+            \Toolbox::logInFile('opmanager', 'HygieneCheck: ' . $error . "\n");
+        }
+        $values = ['last_hygiene_run' => $now, 'last_hygiene_error' => substr(implode(' | ', $stats['errors']), 0, 1000)];
+        // Review Focus 4: a failed ticket run is retried tomorrow, not in a week; a broken
+        // liveness provider is logged but does not hold the weekly gate (final review #2).
+        if ($due && $cfg['enabled'] && $stats['ticket_errors'] === []) {
+            $values['last_hygiene_ticket_run'] = $now;
+        }
+        Config::set($values);
+        $task->addVolume($stats['classified']);
+        $task->log(sprintf(
+            'classified %d, liveness checked %d, tickets created %d, followups %d, errors %d',
+            $stats['classified'],
+            $stats['probed'],
+            $stats['tickets_created'],
+            $stats['followups'],
+            count($stats['errors'])
+        ));
         return 1;
     }
 

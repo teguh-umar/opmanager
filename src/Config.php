@@ -86,7 +86,25 @@ final class Config
         'ticket_filter_keywords'      => '',
         'last_alarm_sync'             => '',
         'last_alarm_sync_error'       => '',
+        // v1.3.0 (D34) NMS hygiene, spec §8.4.
+        'hygiene_enabled'                  => '0',
+        'hygiene_frequency_days'           => '7',
+        'hygiene_unmanaged_availabilities' => '["UnManaged","Device Not Monitored."]',
+        'hygiene_agent_stale_days'         => '7',
+        'hygiene_mist_stale_days'          => '7',
+        'hygiene_probe_cidrs'              => '[]',
+        'hygiene_probe_tcp_ports'          => '[22,443,80,3389,161]',
+        'hygiene_probe_timeout_ms'         => '1000',
+        'hygiene_ticket_template'          => '0',
+        'hygiene_glpi_groups'              => '[]',
+        'hygiene_nms_group'                => '0',
+        'last_hygiene_run'                 => '',
+        'last_hygiene_ticket_run'          => '',
+        'last_hygiene_error'               => '',
     ];
+
+    /** HygieneCheck frequency: daily; tickets follow hygiene_frequency_days (spec §7). */
+    public const HYGIENE_CRON_MINUTES = 1440;
 
     public static function get(string $key): string
     {
@@ -273,6 +291,93 @@ final class Config
         }
 
         return ['values' => $values, 'errors' => $errors];
+    }
+
+    /**
+     * Validate the NMS hygiene part of the Setup form (D34, spec §8.4). Pure; an
+     * invalid field is an error and keeps its stored value.
+     *
+     * @return array{values: array<string, string>, errors: list<string>}
+     */
+    public static function sanitizeHygiene(array $post): array
+    {
+        $values = [];
+        $errors = [];
+
+        foreach (['hygiene_frequency_days' => [1, 90], 'hygiene_agent_stale_days' => [1, 365], 'hygiene_mist_stale_days' => [1, 365], 'hygiene_probe_timeout_ms' => [100, 5000]] as $key => [$min, $max]) {
+            $n = (int) ($post[$key] ?? -1);
+            if ($n < $min || $n > $max) {
+                $errors[] = sprintf(__('%s must be between %d and %d', 'opmanager'), $key, $min, $max);
+            } else {
+                $values[$key] = (string) $n;
+            }
+        }
+
+        $unmanaged = self::lines((string) ($post['hygiene_unmanaged_availabilities'] ?? ''));
+        if ($unmanaged === []) {
+            $errors[] = __('List at least one OpManager availability that means "not monitored"', 'opmanager');
+        } else {
+            $values['hygiene_unmanaged_availabilities'] = (string) json_encode($unmanaged);
+        }
+
+        $cidrs = self::lines((string) ($post['hygiene_probe_cidrs'] ?? ''));
+        $bad   = array_values(array_filter($cidrs, static fn (string $c): bool => !Hygiene\Cidr::isValid($c)));
+        if ($bad !== []) {
+            $errors[] = sprintf(__('Invalid IPv4 CIDR: %s', 'opmanager'), implode(', ', $bad));
+        } else {
+            $values['hygiene_probe_cidrs'] = (string) json_encode($cidrs, JSON_UNESCAPED_SLASHES);
+        }
+
+        $ports = [];
+        $ok    = true;
+        foreach (preg_split('/[\s,;]+/', (string) ($post['hygiene_probe_tcp_ports'] ?? ''), -1, PREG_SPLIT_NO_EMPTY) as $p) {
+            if (!ctype_digit($p) || (int) $p < 1 || (int) $p > 65535) {
+                $ok = false;
+                break;
+            }
+            $ports[(int) $p] = true;
+        }
+        if (!$ok || count($ports) > 10) {
+            $errors[] = __('Probe ports: up to 10 TCP ports between 1 and 65535', 'opmanager');
+        } else {
+            $values['hygiene_probe_tcp_ports'] = (string) json_encode(array_keys($ports));
+        }
+
+        $values['hygiene_ticket_template'] = (string) max(0, (int) ($post['hygiene_ticket_template'] ?? 0));
+        $groups = array_values(array_unique(array_filter(array_map('intval', (array) ($post['hygiene_glpi_groups'] ?? [])), static fn (int $id) => $id > 0)));
+        $values['hygiene_glpi_groups'] = (string) json_encode($groups);
+        $values['hygiene_nms_group']   = (string) max(0, (int) ($post['hygiene_nms_group'] ?? 0));
+
+        $enabled = !empty($post['hygiene_enabled']);
+        if ($enabled && ($groups === [] || $values['hygiene_nms_group'] === '0')) {
+            $errors[] = __('NMS hygiene tickets need the GLPI/asset team group(s) and the NMS team group; tickets stay off', 'opmanager');
+            $enabled  = false;
+        }
+        $values['hygiene_enabled'] = $enabled ? '1' : '0';
+
+        return ['values' => $values, 'errors' => $errors];
+    }
+
+    /**
+     * @return array{enabled: bool, frequency_days: int, unmanaged_values: list<string>, agent_stale_days: int, mist_stale_days: int,
+     *   probe_cidrs: list<string>, probe_ports: list<int>, probe_timeout_ms: int, template_id: int, glpi_groups: list<int>, nms_group: int}
+     */
+    public static function hygieneConfig(): array
+    {
+        $list = static fn (string $key): array => array_values((array) (json_decode(self::get($key), true) ?: []));
+        return [
+            'enabled'          => self::get('hygiene_enabled') === '1',
+            'frequency_days'   => max(1, (int) self::get('hygiene_frequency_days')),
+            'unmanaged_values' => array_map('strval', $list('hygiene_unmanaged_availabilities')),
+            'agent_stale_days' => max(1, (int) self::get('hygiene_agent_stale_days')),
+            'mist_stale_days'  => max(1, (int) self::get('hygiene_mist_stale_days')),
+            'probe_cidrs'      => array_map('strval', $list('hygiene_probe_cidrs')),
+            'probe_ports'      => array_map('intval', $list('hygiene_probe_tcp_ports')),
+            'probe_timeout_ms' => max(100, (int) self::get('hygiene_probe_timeout_ms')),
+            'template_id'      => (int) self::get('hygiene_ticket_template'),
+            'glpi_groups'      => array_map('intval', $list('hygiene_glpi_groups')),
+            'nms_group'        => (int) self::get('hygiene_nms_group'),
+        ];
     }
 
     /**
