@@ -379,10 +379,14 @@ final class SuiteConfig
         }
     }
 
-    /** @return array<string, int> filled in by the hygiene store (Task 8); [] before the table exists. */
+    /** @return array<string, int> hygiene_state => devices; [] before the upgrade created the columns */
     private static function hygieneCounts(): array
     {
-        return [];
+        global $DB;
+        if (!$DB->tableExists('glpi_plugin_opmanager_hygienetickets')) {
+            return [];
+        }
+        return (new \GlpiPlugin\Opmanager\Hygiene\DbHygieneStore())->counts();
     }
 
     private static function textRow(string $id, string $name, string $label, string $value, string $type, string $disabled): string
