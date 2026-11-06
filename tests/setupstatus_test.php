@@ -27,4 +27,15 @@ check('texts never empty', !in_array('', array_column(SetupStatus::items($good, 
 check('webhook mode without token is an error', $lv(SetupStatus::items(['webhook_token_set' => false, 'ticket_source' => 'webhook'] + $good, $now))['webhook'] === 'error');
 check('rules mode without token stays a warning', $lv(SetupStatus::items(['webhook_token_set' => false, 'ticket_source' => 'rules'] + $good, $now))['webhook'] === 'warn');
 
+
+// v1.3.0 (D34): hygiene badge, only when the caller passes hygiene fields.
+check('no hygiene fields: no hygiene badge', !array_key_exists('hygiene', $lv(SetupStatus::items($good, $now))));
+$hy = ['hygiene_enabled' => true, 'last_hygiene_run' => '2026-10-02 06:00:00', 'last_hygiene_error' => ''];
+check('hygiene ran today: ok', ($lv(SetupStatus::items($hy + $good, $now))['hygiene'] ?? null) === 'ok');
+check('hygiene error: error', ($lv(SetupStatus::items(['last_hygiene_error' => 'provider mist: x'] + $hy + $good, $now))['hygiene'] ?? null) === 'error');
+check('hygiene never ran: warn', ($lv(SetupStatus::items(['last_hygiene_run' => ''] + $hy + $good, $now))['hygiene'] ?? null) === 'warn');
+$off = array_column(SetupStatus::items(['hygiene_enabled' => false] + $hy + $good, $now), null, 'key')['hygiene'] ?? [];
+check('hygiene tickets off: warn with text', ($off['level'] ?? null) === 'warn' && ($off['text'] ?? null) === 'tickets off');
+check('hygiene older than two days: warn', ($lv(SetupStatus::items(['last_hygiene_run' => '2026-09-29 06:00:00'] + $hy + $good, $now))['hygiene'] ?? null) === 'warn');
+
 done();

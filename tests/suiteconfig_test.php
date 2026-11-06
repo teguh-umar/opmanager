@@ -44,6 +44,7 @@ namespace {
     class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
+    class Group { public static function dropdown($o = []) { echo "<select name='{$o['name']}'" . (!empty($o['multiple']) ? ' multiple' : '') . "></select>"; } }
     class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
@@ -154,6 +155,16 @@ namespace {
     SuiteConfig::showForm(false);
     $html = (string) ob_get_clean();
     check('new token not shown a second time', !str_contains($html, 'abc123newtoken'));
+
+        // v1.3.0 (D34): NMS hygiene tab.
+    check('hygiene tab exists', in_array('hygiene', SuiteConfig::TABS, true));
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups[]', 'hygiene_nms_group'] as $field) {
+        check("hygiene tab has {$field}", (bool) preg_match('/id="opm-tab-hygiene".*name=[\'"]' . preg_quote($field, '/') . '[\'"]/s', $html));
+    }
+    check('GLPI groups picker is multiple', str_contains($html, "name='hygiene_glpi_groups[]' multiple"));
 
     done();
 }
