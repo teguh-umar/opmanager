@@ -51,7 +51,9 @@ $ticks  = [0.0, 5.0];
 $prober = new TcpProber(200, 1.0, static function () use (&$ticks): float { return array_shift($ticks) ?? 5.0; });
 $prober->probe('127.0.0.1', []); // starts the run's budget at t=0
 $spent = new ProbeProvider($prober, ['0.0.0.0/0'], [22]);
-check('budget spent: no evidence (Review Focus 1)', $spent(['ip_address' => '127.0.0.1'] + $device, '2026-11-06 12:00:00') === null);
+check('budget spent: skipped, not dead (Review Focus 1)', ($spent(['ip_address' => '127.0.0.1'] + $device, '2026-11-06 12:00:00')['verdict'] ?? null) === 'skipped');
+$errors = [];
+check('collect passes skipped through', array_column(Providers::collect($device, '2026-11-06 12:00:00', ['p' => static fn (): ?array => ['verdict' => 'skipped', 'detail' => 'x']], $errors), 'verdict') === ['skipped']);
 
 // --- agent provider skips devices without a GLPI asset (no DB call) ---
 $agent = new AgentProvider(7);

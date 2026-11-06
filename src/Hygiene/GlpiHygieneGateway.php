@@ -26,8 +26,15 @@ final class GlpiHygieneGateway implements HygieneGateway
         return !empty($ticket->fields['is_deleted']) ? TicketGateway::TRASHED : (int) $ticket->fields['status'];
     }
 
-    public function create(string $title, string $html, int $template_id, array $assign_groups, array $observer_groups): int
+    public function create(string $title, string $html, int $template_id, array $assign_groups, array $observer_groups, string $externalid = ''): int
     {
+        // A run that died after Ticket::add but before recording it: adopt that ticket (final review #5).
+        if ($externalid !== '') {
+            $found = (new \Ticket())->find(['externalid' => $externalid, 'is_deleted' => 0, 'NOT' => ['status' => [5, 6]]], ['id DESC'], 1);
+            if ($found !== []) {
+                return (int) array_key_first($found);
+            }
+        }
         $entity = (int) $this->cfg['entity_default'];
         [$tt_id, $predefined, $mandatory] = $this->template($template_id, $entity);
 
@@ -40,7 +47,7 @@ final class GlpiHygieneGateway implements HygieneGateway
         $input['_groups_id_assign']   = array_values(array_filter(array_map('intval', $assign_groups)));
         $input['_groups_id_observer'] = array_values(array_filter(array_map('intval', $observer_groups)));
         $input['_tickettemplate']     = $tt_id;
-        $input['externalid']          = 'opmanager:hygiene:' . md5($title);
+        $input['externalid']          = $externalid;
         // Spec §4: always a Request, even when the template predefines another type.
         $input['type']                = \Ticket::DEMAND_TYPE;
 

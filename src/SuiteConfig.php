@@ -345,7 +345,8 @@ final class SuiteConfig
         echo '<label class="form-check-label" for="opm-hy-on' . $sfx . '">' . __s('Create hygiene tickets (the classification runs daily either way)', 'opmanager') . '</label></div>';
         echo self::textRow('hygiene_frequency_days' . $sfx, 'hygiene_frequency_days', __('Days between hygiene ticket runs', 'opmanager'), Config::get('hygiene_frequency_days'), 'number', $disabled);
         echo '<div class="mb-2"><label class="form-label">' . __s('GLPI team and asset team groups (assigned to the "not in GLPI" ticket)', 'opmanager') . '</label>';
-        \Group::dropdown(['name' => 'hygiene_glpi_groups[]', 'multiple' => true, 'values' => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_groups'), true) ?: [])), 'readonly' => !$canedit]);
+        // 'value', not 'values': for multiple, Dropdown::show() copies value into values (11.0.5).
+        \Group::dropdown(['name' => 'hygiene_glpi_groups[]', 'multiple' => true, 'value' => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_groups'), true) ?: [])), 'readonly' => !$canedit]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('NMS team group (assigned to the "unmanaged" ticket, observer on the other)', 'opmanager') . '</label>';
         \Group::dropdown(['name' => 'hygiene_nms_group', 'value' => (int) Config::get('hygiene_nms_group'), 'readonly' => !$canedit]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('Hygiene ticket template', 'opmanager') . '</label>';

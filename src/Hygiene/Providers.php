@@ -44,7 +44,8 @@ final class Providers
                 $errors[] = 'provider ' . $name . ': ' . $t->getMessage();
                 continue;
             }
-            if (is_array($e) && in_array($e['verdict'] ?? null, ['alive', 'dead'], true)) {
+            // 'skipped' = could not check this run (e.g. probe budget spent); never counts as dead.
+            if (is_array($e) && in_array($e['verdict'] ?? null, ['alive', 'dead', 'skipped'], true)) {
                 $out[] = ['verdict' => $e['verdict'], 'source' => (string) $name, 'detail' => (string) ($e['detail'] ?? '')];
             }
         }

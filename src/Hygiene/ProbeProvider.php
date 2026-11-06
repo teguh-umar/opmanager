@@ -20,6 +20,10 @@ final class ProbeProvider
         if ($this->ports === [] || !Cidr::contains($ip, $this->cidrs)) {
             return null;
         }
-        return Liveness::fromProbe($this->prober->probe($ip, $this->ports));
+        $result = $this->prober->probe($ip, $this->ports);
+        if ($result === null) {
+            return ['verdict' => 'skipped', 'detail' => 'probe budget spent this run'];
+        }
+        return Liveness::fromProbe($result);
     }
 }

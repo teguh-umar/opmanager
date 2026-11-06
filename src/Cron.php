@@ -163,6 +163,10 @@ final class Cron extends \CommonGLPI
                 'service_user'   => $tcf['service_user'],
                 'entity_default' => $tcf['entity_default'],
                 'list_url'       => Device::getSearchURL(true),
+                // Final review #3: no ticket run on stale OpManager data.
+                'device_data_fresh' => Config::get('last_device_sync_error') === ''
+                    && Config::get('last_device_sync') !== ''
+                    && strtotime($now) - strtotime(Config::get('last_device_sync')) <= 60 * max(1, (int) Config::get('stale_warning_minutes')),
             ]
         );
         $stats = $run->run($now, $due);
@@ -171,8 +175,9 @@ final class Cron extends \CommonGLPI
             \Toolbox::logInFile('opmanager', 'HygieneCheck: ' . $error . "\n");
         }
         $values = ['last_hygiene_run' => $now, 'last_hygiene_error' => substr(implode(' | ', $stats['errors']), 0, 1000)];
-        // Review Focus 4: a failed ticket run is retried tomorrow, not in a week.
-        if ($due && $cfg['enabled'] && $stats['errors'] === []) {
+        // Review Focus 4: a failed ticket run is retried tomorrow, not in a week; a broken
+        // liveness provider is logged but does not hold the weekly gate (final review #2).
+        if ($due && $cfg['enabled'] && $stats['ticket_errors'] === []) {
             $values['last_hygiene_ticket_run'] = $now;
         }
         Config::set($values);
