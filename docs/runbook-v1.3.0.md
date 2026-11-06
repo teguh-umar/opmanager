@@ -41,8 +41,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 - [ ] Run once by hand: `sudo -u nginx php /data/www/glpi/front/cron.php --force HygieneCheck`. The status badge "NMS hygiene" shows `tickets off` (yellow). No error.
 - [ ] OpManager > Devices: add the columns **Hygiene condition**, **Liveness** and **Liveness evidence**.
 - [ ] Filter **Hygiene condition = Unmanaged, dead**. Each row's evidence is plausible (agent silent for weeks, Mist disconnected, TCP no answer).
-- [ ] Filter **Unmanaged, still alive**. DEV-APP-01 and VM-APP-TEMP appear here if their agent still reports.
-- [ ] Filter **Monitored, not in GLPI**. For example, 10.20.12.60 and 10.20.12.71 (Clear, not found in GLPI).
+- [ ] Filter **Unmanaged, still alive**. Unmanaged devices that are still in GLPI appear here if their agent still reports.
+- [ ] Filter **Monitored, not in GLPI**. Expect devices with "Not found in GLPI" that OpManager still monitors.
 - [ ] Open a device such as 127.0.0.1. Exclude it with a reason. The condition becomes "Excluded from hygiene tickets" at once. Cancel the exclusion: the history keeps both lines.
 
 ## 5. Turn tickets on
