@@ -70,14 +70,14 @@ final class FakeGateway implements HygieneGateway
     public array $status = [];
     public int $fail_create = 0;
     public function status(int $tickets_id): ?int { return $this->status[$tickets_id] ?? 2; }
-    public function create(string $title, string $html, int $template_id, array $assign, array $observer): int
+    public function create(string $title, string $html, int $template_id, array $assign, array $observer, string $externalid = ''): int
     {
         if ($this->fail_create > 0) {
             $this->fail_create--;
             return 0;
         }
         $id = 100 + count($this->created);
-        $this->created[$id] = compact('title', 'html', 'template_id', 'assign', 'observer');
+        $this->created[$id] = compact('title', 'html', 'template_id', 'assign', 'observer', 'externalid');
         return $id;
     }
     public function followup(int $tickets_id, string $html): bool
@@ -97,7 +97,7 @@ $cfg = [
     'enabled' => true, 'frequency_days' => 7, 'unmanaged_values' => ['UnManaged', 'Device Not Monitored.'],
     'agent_stale_days' => 7, 'mist_stale_days' => 7, 'probe_cidrs' => [], 'probe_ports' => [], 'probe_timeout_ms' => 500,
     'template_id' => 0, 'glpi_groups' => [11, 12], 'nms_group' => 20, 'service_user' => 5, 'entity_default' => 0,
-    'list_url' => 'https://glpi/plugins/opmanager/front/device.php',
+    'list_url' => 'https://glpi/plugins/opmanager/front/device.php', 'device_data_fresh' => true,
 ];
 $calls = 0;
 $dead  = static function (array $d) use (&$calls): ?array { $calls++; return ['verdict' => 'dead', 'detail' => 'agent silent']; };
@@ -181,5 +181,47 @@ $s->devices = [$dev(2, 'k2', 'Clear', 'unmatched')];
 $g = new FakeGateway();
 $stats = (new HygieneRun($s, [], $g, ['enabled' => false] + $cfg))->run($now, true);
 check('disabled: classifies, no ticket', $by($s, 2) === 'glpi_missing' && $g->created === []);
+
+// --- final review fixes ---
+// #2: a broken provider must not block the weekly ticket gate.
+$s = new MemStore();
+$s->devices = [$dev(1, 'k1', 'UnManaged', 'matched'), $dev(2, 'k2', 'Clear', 'unmatched')];
+$g = new FakeGateway();
+$stats = (new HygieneRun($s, ['boom' => static function (): ?array { throw new RuntimeException('API down'); }], $g, $cfg))->run($now, true);
+check('#2 provider error is a run error but not a ticket error', $stats['errors'] !== [] && $stats['ticket_errors'] === [] && count($g->created) === 2);
+$g = new FakeGateway();
+$g->fail_create = 1;
+$s = new MemStore();
+$s->devices = [$dev(2, 'k2', 'Clear', 'unmatched')];
+$stats = (new HygieneRun($s, [], $g, $cfg))->run($now, true);
+check('#2 a failed create is a ticket error', $stats['ticket_errors'] !== []);
+
+// #3: stale OpManager data never turns into "no longer applies".
+$s = new MemStore();
+$s->devices = [$dev(2, 'k2', 'Clear', 'unmatched')];
+$g = new FakeGateway();
+(new HygieneRun($s, [], $g, $cfg))->run($now, true);
+$s->devices[0]['last_seen'] = '2026-11-06 01:00:00'; // DeviceSync failing for hours
+$stats = (new HygieneRun($s, [], $g, ['device_data_fresh' => false] + $cfg))->run($now, true);
+check('#3 stale device data: no followup, ticket error raised', $g->followups === [] && $stats['ticket_errors'] !== [] && $s->items[1]['k2'][1] === false);
+
+// #4a: a spent probe budget never downgrades a device the probe saw alive.
+$s = new MemStore();
+$s->devices = [$dev(1, 'k1', 'UnManaged', 'matched', 'alive')];
+$skip = static fn (): ?array => ['verdict' => 'skipped', 'detail' => 'probe budget spent'];
+(new HygieneRun($s, ['agent' => $dead, 'probe' => $skip], new FakeGateway(), $cfg))->run($now, false);
+check('#4a budget spent + agent dead keeps stored alive', $s->saved[1]['liveness_state'] === 'alive' && $by($s, 1) === 'unmanaged_alive');
+// #4b: no evidence leaves liveness_checked_at untouched.
+$s = new MemStore();
+$s->devices = [$dev(1, 'k1', 'UnManaged', 'matched')];
+(new HygieneRun($s, ['probe' => $skip], new FakeGateway(), $cfg))->run($now, false);
+check('#4b no evidence: checked_at not set', $s->saved[1]['liveness_checked_at'] === null && $s->saved[1]['liveness_state'] === 'unknown');
+
+// #5: tickets carry a per-flow externalid so the gateway can adopt one after a crash.
+$s = new MemStore();
+$s->devices = [$dev(1, 'k1', 'UnManaged', 'matched'), $dev(2, 'k2', 'Clear', 'unmatched')];
+$g = new FakeGateway();
+(new HygieneRun($s, ['agent' => $dead], $g, $cfg))->run($now, true);
+check('#5 per-flow externalid', array_column($g->created, 'externalid') === ['opmanager:hygiene:glpi', 'opmanager:hygiene:nms']);
 
 done();

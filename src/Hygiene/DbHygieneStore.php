@@ -14,7 +14,8 @@ final class DbHygieneStore implements HygieneStore
     {
         global $DB;
         $out = [];
-        foreach ($DB->request(['FROM' => self::DEVICES, 'ORDER' => 'id']) as $row) {
+        // Oldest liveness check first, so a spent probe budget skips different devices each day (final review #4b).
+        foreach ($DB->request(['FROM' => self::DEVICES, 'ORDER' => ['liveness_checked_at ASC', 'id']]) as $row) {
             $row['id']       = (int) $row['id'];
             $row['items_id'] = (int) $row['items_id'];
             if ($row['match_state'] === 'matched' && $row['itemtype'] !== '' && $row['items_id'] > 0) {

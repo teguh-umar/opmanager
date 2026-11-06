@@ -44,7 +44,7 @@ namespace {
     class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
-    class Group { public static function dropdown($o = []) { echo "<select name='{$o['name']}'" . (!empty($o['multiple']) ? ' multiple' : '') . "></select>"; } }
+    class Group { public static function dropdown($o = []) { echo "<select name='{$o['name']}'" . (!empty($o['multiple']) ? ' multiple' : '') . " data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
     class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
@@ -165,6 +165,12 @@ namespace {
         check("hygiene tab has {$field}", (bool) preg_match('/id="opm-tab-hygiene".*name=[\'"]' . preg_quote($field, '/') . '[\'"]/s', $html));
     }
     check('GLPI groups picker is multiple', str_contains($html, "name='hygiene_glpi_groups[]' multiple"));
+
+        $GLOBALS['CFG_VALUES']['hygiene_glpi_groups'] = '[11,12]';
+    ob_start();
+    SuiteConfig::showForm(false);
+    $html = (string) ob_get_clean();
+    check('saved GLPI groups pre-selected via value (11.0.5), so a Setup save keeps them', str_contains($html, "name='hygiene_glpi_groups[]' multiple data-value='[11,12]'"));
 
     done();
 }
