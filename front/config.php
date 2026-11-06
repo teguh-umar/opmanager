@@ -26,9 +26,10 @@ if (isset($_POST['update'])) {
 
     $result  = Config::sanitize($_POST, array_keys(Config::offeredItemtypes()));
     $tickets = Config::sanitizeTicketing($_POST);
+    $hygiene = Config::sanitizeHygiene($_POST);
     $result  = [
-        'values' => $result['values'] + $tickets['values'],
-        'errors' => array_merge($result['errors'], $tickets['errors']),
+        'values' => $result['values'] + $tickets['values'] + $hygiene['values'],
+        'errors' => array_merge($result['errors'], $tickets['errors'], $hygiene['errors']),
     ];
     Config::set($result['values']);
     foreach ($result['errors'] as $error) {
