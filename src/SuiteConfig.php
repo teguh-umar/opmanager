@@ -18,7 +18,7 @@ final class SuiteConfig
     /** Session key holding a freshly generated webhook token until the form shows it once. */
     public const NEW_TOKEN_KEY = 'plugin_opmanager_new_webhook_token';
 
-    public const TABS = ['connection', 'matching', 'tickets', 'filter', 'webhook', 'outbound'];
+    public const TABS = ['connection', 'matching', 'tickets', 'filter', 'webhook', 'outbound', 'hygiene'];
 
     public static function section(): ?array
     {
@@ -58,6 +58,7 @@ final class SuiteConfig
             'filter'     => __('Alarm filter', 'opmanager'),
             'webhook'    => __('Webhook', 'opmanager'),
             'outbound'   => __('To OpManager', 'opmanager'),
+            'hygiene'    => __('NMS hygiene', 'opmanager'),
         ];
         echo '<ul class="nav nav-tabs" role="tablist">';
         foreach (self::TABS as $i => $tab) {
@@ -74,6 +75,7 @@ final class SuiteConfig
                 'filter'     => self::showAlarmFilter($sfx, $disabled),
                 'webhook'    => self::tabWebhook($canedit),
                 'outbound'   => self::tabOutbound($sfx, $disabled),
+                'hygiene'    => self::tabHygiene($sfx, $disabled, $canedit),
             };
             echo '</div>';
         }
@@ -102,7 +104,10 @@ final class SuiteConfig
             'ticket_source' => Config::get('ticket_source'),
             'outbox_pending'         => $box['pending'],
             'outbox_failed'          => $box['failed'],
-        ], (string) ($_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s')));
+            'hygiene_enabled'        => Config::get('hygiene_enabled') === '1',
+            'last_hygiene_run'       => Config::get('last_hygiene_run'),
+            'last_hygiene_error'     => Config::get('last_hygiene_error'),
+        ],(string) ($_SESSION['glpi_currenttime'] ?? date('Y-m-d H:i:s')));
         $color = ['ok' => 'success', 'warn' => 'warning', 'error' => 'danger'];
         $icon  = ['ok' => 'ti-circle-check', 'warn' => 'ti-alert-triangle', 'error' => 'ti-circle-x'];
         echo '<div class="opm-status d-flex flex-wrap gap-2 mb-3">';
@@ -328,6 +333,56 @@ final class SuiteConfig
         if ($filter['filter_event_types'] === [] && $filter['filter_keywords'] === []) {
             echo '<div class="alert alert-info mt-1">' . __s('Alarm filter is off: every alarm that passes the severity and production rules gets a ticket.', 'opmanager') . '</div>';
         }
+    }
+
+    /** D34: NMS hygiene settings (spec §6, §8.4). */
+    private static function tabHygiene(string $sfx, string $disabled, bool $canedit): void
+    {
+        $lines = static fn (string $key): string => implode("\n", array_map('strval', (array) (json_decode(Config::get($key), true) ?: [])));
+        echo '<p class="text-muted">' . __s('GLPI is the asset source of truth. Weekly Request tickets: devices monitored in OpManager but not in GLPI go to the GLPI and asset teams (NMS team as observer); unmanaged devices that are dead or of unknown liveness go to the NMS team. Nothing is ever changed in OpManager.', 'opmanager') . '</p>';
+        echo '<div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="hygiene_enabled" value="1" id="opm-hy-on' . $sfx . '"'
+            . (Config::get('hygiene_enabled') === '1' ? ' checked' : '') . $disabled . '>';
+        echo '<label class="form-check-label" for="opm-hy-on' . $sfx . '">' . __s('Create hygiene tickets (the classification runs daily either way)', 'opmanager') . '</label></div>';
+        echo self::textRow('hygiene_frequency_days' . $sfx, 'hygiene_frequency_days', __('Days between hygiene ticket runs', 'opmanager'), Config::get('hygiene_frequency_days'), 'number', $disabled);
+        echo '<div class="mb-2"><label class="form-label">' . __s('GLPI team and asset team groups (assigned to the "not in GLPI" ticket)', 'opmanager') . '</label>';
+        \Group::dropdown(['name' => 'hygiene_glpi_groups[]', 'multiple' => true, 'values' => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_groups'), true) ?: [])), 'readonly' => !$canedit]);
+        echo '</div><div class="mb-2"><label class="form-label">' . __s('NMS team group (assigned to the "unmanaged" ticket, observer on the other)', 'opmanager') . '</label>';
+        \Group::dropdown(['name' => 'hygiene_nms_group', 'value' => (int) Config::get('hygiene_nms_group'), 'readonly' => !$canedit]);
+        echo '</div><div class="mb-2"><label class="form-label">' . __s('Hygiene ticket template', 'opmanager') . '</label>';
+        \TicketTemplate::dropdown([
+            'name'                => 'hygiene_ticket_template',
+            'value'               => (int) Config::get('hygiene_ticket_template'),
+            'display_emptychoice' => true,
+            'emptylabel'          => __('Default GLPI Request template', 'opmanager'),
+            'readonly'            => !$canedit,
+        ]);
+        echo '</div>';
+        echo '<div class="mb-2"><label class="form-label" for="opm-hy-unm' . $sfx . '">' . __s('OpManager availabilities that mean "not monitored" (one per line)', 'opmanager') . '</label>'
+            . '<textarea class="form-control" rows="2" id="opm-hy-unm' . $sfx . '" name="hygiene_unmanaged_availabilities"' . $disabled . '>' . htmlescape($lines('hygiene_unmanaged_availabilities')) . '</textarea></div>';
+        echo self::textRow('hygiene_agent_stale_days' . $sfx, 'hygiene_agent_stale_days', __('GLPI agent silent for more than (days) = dead', 'opmanager'), Config::get('hygiene_agent_stale_days'), 'number', $disabled);
+        echo self::textRow('hygiene_mist_stale_days' . $sfx, 'hygiene_mist_stale_days', __('Mist device not seen for more than (days) = dead', 'opmanager'), Config::get('hygiene_mist_stale_days'), 'number', $disabled);
+        echo '<div class="mb-2"><label class="form-label" for="opm-hy-cidr' . $sfx . '">' . __s('Segments the GLPI server can reach, for the TCP probe (IPv4 CIDR, one per line; empty = no probe)', 'opmanager') . '</label>'
+            . '<textarea class="form-control" rows="3" id="opm-hy-cidr' . $sfx . '" name="hygiene_probe_cidrs"' . $disabled . '>' . htmlescape($lines('hygiene_probe_cidrs')) . '</textarea></div>';
+        echo self::textRow('hygiene_probe_tcp_ports' . $sfx, 'hygiene_probe_tcp_ports', __('Probe TCP ports (comma separated, up to 10)', 'opmanager'), implode(',', array_map('intval', (array) (json_decode(Config::get('hygiene_probe_tcp_ports'), true) ?: []))), 'text', $disabled);
+        echo self::textRow('hygiene_probe_timeout_ms' . $sfx, 'hygiene_probe_timeout_ms', __('Probe timeout per port (ms)', 'opmanager'), Config::get('hygiene_probe_timeout_ms'), 'number', $disabled);
+        echo '<div class="form-hint mb-2">' . __s('Other plugins can add liveness sources (e.g. a FortiCloud plugin) through the opmanager_liveness hook.', 'opmanager') . '</div>';
+
+        foreach (self::hygieneCounts() as $state => $n) {
+            echo '<span class="badge bg-secondary-lt me-1">' . htmlescape((\GlpiPlugin\Opmanager\Hygiene\Classifier::labels()[$state] ?? $state) . ': ' . $n) . '</span>';
+        }
+        $last  = Config::get('last_hygiene_run');
+        $error = Config::get('last_hygiene_error');
+        echo '<div class="mt-2">' . __s('Last hygiene run', 'opmanager') . ': ' . htmlescape($last !== '' ? $last : __('never', 'opmanager'))
+            . ' · ' . __s('last ticket run', 'opmanager') . ': ' . htmlescape(Config::get('last_hygiene_ticket_run') ?: __('never', 'opmanager')) . '</div>';
+        if ($error !== '') {
+            echo '<div class="alert alert-warning">' . __s('Last hygiene error', 'opmanager') . ': ' . htmlescape($error) . '</div>';
+        }
+    }
+
+    /** @return array<string, int> filled in by the hygiene store (Task 8); [] before the table exists. */
+    private static function hygieneCounts(): array
+    {
+        return [];
     }
 
     private static function textRow(string $id, string $name, string $label, string $value, string $type, string $disabled): string
