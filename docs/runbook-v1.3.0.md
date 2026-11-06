@@ -4,14 +4,14 @@ tags: [opmanager, runbook, hygiene, D34]
 status: active
 ---
 
-# opmanager v1.3.0-rc1: NMS hygiene runbook
+# opmanager v1.3.0-rc2: NMS hygiene runbook
 
 Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv1.3.0-rc1.zip && sudo chown -R nginx: opmanager
+cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv1.3.0-rc2.zip && sudo chown -R nginx: opmanager
 sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
 sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```

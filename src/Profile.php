@@ -47,7 +47,7 @@ class Profile extends \Profile
             $rights[] = [
                 'itemtype' => '',
                 'rights'   => RightDefinition::rightsMatrix($name),
-                'label'    => $name === RightDefinition::CONFIG ? __('Configuration') : __('Monitoring', 'opmanager'),
+                'label'    => RightDefinition::label($name),
                 'field'    => $name,
             ];
         }

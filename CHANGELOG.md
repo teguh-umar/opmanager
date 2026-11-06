@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0-rc2
+
+- Fix: in the Profile rights matrix, the new hygiene right showed as a second "Monitoring" row. It is now labelled **NMS hygiene**.
+- Fix: SelfCheck `suite/lib-shas` failed on the VM since 1.2.0. It still expected ConfigTab r3 and AssetTab r1. It now checks the shipped ConfigTab r4, AssetTab r2 and Menu r1.
+
 ## 1.3.0-rc1
 
 - New **NMS hygiene** (D34). GLPI is the asset source of truth; OpManager only monitors.
