@@ -22,7 +22,11 @@ check('store keeps stored liveness when null is passed', str_contains($store, '!
 $cron = (string) @file_get_contents(OPM_ROOT . '/src/Cron.php');
 check('HygieneCheck cron exists', str_contains($cron, 'public static function cronHygieneCheck(\CronTask $task): int'));
 check('cron info for HygieneCheck', str_contains($cron, "'HygieneCheck' =>"));
-check('ticket run advances only on a clean run (Review Focus 4)', (bool) preg_match("/errors'\] === \[\].*?'last_hygiene_ticket_run'/s", $cron));
+check('ticket run advances only when the ticket flows succeeded (Review Focus 4, final #2)', (bool) preg_match("/ticket_errors'\] === \[\].*?'last_hygiene_ticket_run'/s", $cron));
+check('cron passes device data freshness (final #3)', str_contains($cron, "'device_data_fresh'"));
+$adopt = strpos($gw, "->find(['externalid' => \$externalid, 'is_deleted' => 0, 'NOT' => ['status' => [5, 6]]]");
+check('gateway adopts an open ticket with the same externalid before adding (final #5)', $adopt !== false && $adopt < strpos($gw, '(new \Ticket())->add('));
+check('oldest liveness check first (final #4b)', str_contains($store, "'ORDER' => ['liveness_checked_at ASC', 'id']"));
 check('hygiene error kept visible', str_contains($cron, "'last_hygiene_error'"));
 check('cron uses the provider registry', str_contains($cron, 'Providers::all('));
 
