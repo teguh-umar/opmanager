@@ -28,4 +28,14 @@ check('AlarmSync registered in CLI mode from the interval constant', str_contain
 check('menu has an alarm entry', str_contains((string) file_get_contents(OPM_ROOT . '/src/Menu.php'), "'alarm'"));
 check('alarm list page exists', is_file(OPM_ROOT . '/front/alarm.php'));
 
+// v1.3.0 (D34): hygiene view and exceptions.
+check('except requires the hygiene UPDATE right', (bool) preg_match('/isset\(\$_POST\[.except.\]\).*?checkRight\(RightDefinition::HYGIENE, UPDATE\)/s', $form));
+check('unexcept requires the hygiene UPDATE right', (bool) preg_match('/isset\(\$_POST\[.unexcept.\]\).*?checkRight\(RightDefinition::HYGIENE, UPDATE\)/s', $form));
+$dev = (string) file_get_contents(OPM_ROOT . '/src/Device.php');
+foreach ([10 => 'hygiene_state', 11 => 'liveness_state', 12 => 'liveness_detail'] as $id => $field) {
+    check("search option {$id} is {$field}", str_contains($dev, "'id' => {$id}, 'table' => \$table, 'field' => '{$field}'"));
+}
+check('hygiene block gated by the hygiene READ right', str_contains($dev, 'haveRight(RightDefinition::HYGIENE, READ)'));
+check('exception buttons gated by the hygiene UPDATE right', str_contains($dev, 'haveRight(RightDefinition::HYGIENE, UPDATE)'));
+
 done();
