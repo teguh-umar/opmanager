@@ -9,16 +9,19 @@ namespace GlpiPlugin\Opmanager;
  * |-----------------------------|---------------|-----------------------------------------|
  * | plugin_opmanager_config     | READ | UPDATE | Setup section, manual pin/unpin         |
  * | plugin_opmanager_monitoring | READ          | Monitoring section, Devices list/form   |
+ * | plugin_opmanager_hygiene    | READ | UPDATE | NMS hygiene view; UPDATE = exceptions   |
  */
 final class RightDefinition
 {
     public const CONFIG     = 'plugin_opmanager_config';
     public const MONITORING = 'plugin_opmanager_monitoring';
+    public const HYGIENE    = 'plugin_opmanager_hygiene';
 
     /** right name => allowed mask */
     public const ALL = [
         self::CONFIG     => READ | UPDATE,
         self::MONITORING => READ,
+        self::HYGIENE    => READ | UPDATE,
     ];
 
     /** @return list<string> */
@@ -33,6 +36,7 @@ final class RightDefinition
         return match ($name) {
             self::CONFIG     => [READ => __('Read'), UPDATE => __('Update')],
             self::MONITORING => [READ => __('Read')],
+            self::HYGIENE    => [READ => __('Read'), UPDATE => __('Update')],
             default          => [],
         };
     }
