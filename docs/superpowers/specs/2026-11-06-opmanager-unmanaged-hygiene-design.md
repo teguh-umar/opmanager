@@ -140,6 +140,14 @@ Aturan anti-banjir (usulan Claude, disetujui user):
 - Isi tiket berupa tabel per perangkat: nama, IP, kategori OpManager, availability, aset GLPI
   (link bila ada), hasil cek hidup + detail, `last_seen`. Tiket juga berisi tautan ke daftar
   Devices yang sudah difilter.
+- **Tiket kebersihan tidak melewati business rules tiket (rc5, keputusan user 2026-11-09, opsi A).**
+  Tiket ini dibuat dengan flag core `_skip_rules`. Alasannya: di production ada aturan alarm,
+  misalnya "Description contains 10.20.10." dengan aksi Assign group SysAdmin dan category Server.
+  Aturan itu cocok dengan isi laporan yang memuat banyak IP, lalu mengganti grup kebersihan; tiket
+  NMS jadi ter-assign ke SysAdmin. Karena aturan dilewati, ITIL category datang dari Setup
+  (`hygiene_itil_category`, opsional). Plugin Behaviors mewajibkan category sebelum Solve/Close.
+  Untuk `nms`: tiket laporan apa pun yang berisi banyak IP atau perangkat sebaiknya juga melewati
+  aturan tiket.
 - **Tiket GLPI juga dibagi per domain dan punya teknisi penanggung jawab (rc4, keputusan user
   2026-11-09).** Pendaftar aset: server oleh SysAdmin, network oleh ITOC, plus satu atau lebih
   teknisi yang ditunjuk sebagai penanggung jawab input dan cek aset. Tiket GLPI di-assign ke
@@ -289,6 +297,7 @@ Perangkat yang di-pin manual dihitung Matched.
 | `hygiene_ticket_template` | `0` | template tiket kebersihan; 0 = template Request default |
 | `hygiene_glpi_groups` | `[]` | grup assigned tiket GLPI (tim GLPI + tim aset) |
 | `hygiene_glpi_users` | `[]` | rc4: user (teknisi penanggung jawab input dan cek aset) yang ikut di-assign ke tiket GLPI; opsional |
+| `hygiene_itil_category` | `0` | rc5: ITIL category kedua tiket kebersihan; 0 = tanpa category |
 | `hygiene_nms_group` | `0` | grup tim NMS: assigned tiket NMS dan observer tiket GLPI |
 | `last_hygiene_run` | '' | |
 | `last_hygiene_ticket_run` | '' | |

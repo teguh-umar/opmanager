@@ -161,7 +161,7 @@ check('unknown ticket source falls back to webhook', Config::sanitizeTicketing([
 
 
 // --- v1.3.0 (D34) hygiene defaults, spec §8.4 ---
-foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups', 'hygiene_glpi_users', 'hygiene_nms_group', 'last_hygiene_run', 'last_hygiene_ticket_run', 'last_hygiene_error'] as $k) {
+foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups', 'hygiene_glpi_users', 'hygiene_itil_category', 'hygiene_nms_group', 'last_hygiene_run', 'last_hygiene_ticket_run', 'last_hygiene_error'] as $k) {
     check("default exists: {$k}", array_key_exists($k, Config::DEFAULTS));
 }
 check('unmanaged availabilities default', json_decode(Config::DEFAULTS['hygiene_unmanaged_availabilities'] ?? '', true) === ['UnManaged', 'Device Not Monitored.']);
@@ -176,7 +176,7 @@ $h = [
     'hygiene_enabled' => '1', 'hygiene_frequency_days' => '7', 'hygiene_unmanaged_availabilities' => "UnManaged\r\nDevice Not Monitored.\r\n",
     'hygiene_agent_stale_days' => '7', 'hygiene_mist_stale_days' => '14', 'hygiene_probe_cidrs' => "10.20.0.0/16\n192.168.50.0/24",
     'hygiene_probe_tcp_ports' => '22, 443,22', 'hygiene_probe_timeout_ms' => '1000', 'hygiene_ticket_template' => '3',
-    'hygiene_glpi_groups' => ['11', '12'], 'hygiene_glpi_users' => ['7', '0', '9', '7'], 'hygiene_nms_group' => '20',
+    'hygiene_glpi_groups' => ['11', '12'], 'hygiene_glpi_users' => ['7', '0', '9', '7'], 'hygiene_itil_category' => '31', 'hygiene_nms_group' => '20',
 ];
 $r = Config::sanitizeHygiene($h);
 check('hygiene: valid post has no error', $r['errors'] === [], implode('; ', $r['errors']));
@@ -186,6 +186,8 @@ check('hygiene: cidrs stored as JSON', ($r['values']['hygiene_probe_cidrs'] ?? n
 check('hygiene: ports unique ints', ($r['values']['hygiene_probe_tcp_ports'] ?? null) === '[22,443]');
 check('hygiene: groups as int JSON', ($r['values']['hygiene_glpi_groups'] ?? null) === '[11,12]' && ($r['values']['hygiene_nms_group'] ?? null) === '20');
 check('hygiene: asset technicians as int JSON (rc4)', ($r['values']['hygiene_glpi_users'] ?? null) === '[7,9]');
+check('hygiene: ITIL category stored (rc5)', ($r['values']['hygiene_itil_category'] ?? null) === '31');
+check('hygiene: ITIL category default none', (Config::DEFAULTS['hygiene_itil_category'] ?? null) === '0');
 check('hygiene: mist stale stored', ($r['values']['hygiene_mist_stale_days'] ?? null) === '14');
 $r = Config::sanitizeHygiene(['hygiene_frequency_days' => '0'] + $h);
 check('hygiene: frequency 0 refused, value kept', $r['errors'] !== [] && !array_key_exists('hygiene_frequency_days', $r['values']));

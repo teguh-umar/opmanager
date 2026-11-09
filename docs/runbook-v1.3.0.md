@@ -4,14 +4,14 @@ tags: [opmanager, runbook, hygiene, D34]
 status: active
 ---
 
-# opmanager v1.3.0-rc4: NMS hygiene runbook
+# opmanager v1.3.0-rc5: NMS hygiene runbook
 
 Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc4.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc5.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - The old folder goes to `/tmp` as a backup, never inside `plugins/` (GLPI would read it as another plugin). Rollback: move it back and run `plugin:install --force` and `plugin:activate` again.
@@ -29,7 +29,8 @@ cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) &&
 ## 3. Setup (Setup > General > suite tab > OpManager > NMS hygiene)
 
 - [x] **GLPI and asset team groups:** pick the groups that register assets: the server team (e.g. Infra > SysAdmin) and the network team (e.g. Infra > ITOC).
-- [x] **Asset technician(s):** pick the technician(s) responsible for asset input and checks. They are assigned to the "not in GLPI" ticket with the groups. Optional.
+- [x] **Asset technician(s):** pick the technician(s) responsible for asset input and checks. They are assigned to the "not in GLPI" ticket with the groups. Optional. Pick one account per person (duplicate LDAP accounts show the same name twice).
+- [ ] **ITIL category of the hygiene tickets** (rc5): optional. Hygiene tickets skip the ticket business rules (the alarm rules match their IP lists), so no rule sets a category. The Behaviors plugin needs one before Solve/Close.
 - [x] **NMS team group:** pick the shared NMS group (members of both the server team and the network team, as direct members: GLPI does not notify sub-group members of a parent group).
 - [x] **Template:** leave it empty (default Request template), or pick a Request template without mandatory fields the plugin cannot fill.
 - [x] **Unmanaged availabilities:** `UnManaged` and `Device Not Monitored.` (default). Add any other value the device list shows for unmonitored devices.
@@ -54,11 +55,14 @@ cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) &&
 
 ## 5. Turn tickets on
 
+- [ ] Only when re-testing after an earlier rc created tickets: put both old hygiene tickets in the trash, then reset the weekly gate so the next run creates new ones:
+  `sudo -u nginx php /data/www/glpi/bin/console config:set --context=plugin:opmanager last_hygiene_ticket_run ""`
 - [ ] Setup > NMS hygiene: tick **Create hygiene tickets** and Save.
 - [ ] The first run after enabling creates the tickets at once (no ticket run was recorded while they were off).
 - [ ] Run `front/cron.php --force HygieneCheck`. Two Request tickets appear:
   - `[OPM-HYGIENE] Monitored in OpManager, not in GLPI - <date>`: assigned to the GLPI and asset groups and the asset technician(s), with the NMS group as observer, split into "Server, VM and storage", "Network" and "Unknown category";
   - `[OPM-HYGIENE] Unmanaged in OpManager: remove or check - <date>`: assigned to the NMS group, in two sections, "Dead" and "Liveness unknown", each split into "Server, VM and storage", "Network" and "Unknown category".
+- [ ] Ticket history (Historical tab): the assigned and observer groups and users are exactly those in Setup; no business rule replaced them, and the category is the one chosen in Setup (or empty).
 - [ ] Run it again: no new ticket and no followup (nothing changed, tickets still open).
 - [ ] Solve the NMS ticket. The next weekly run creates a new one with the full current list.
 

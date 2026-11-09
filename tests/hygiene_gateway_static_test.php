@@ -8,6 +8,8 @@ check('hygiene tickets are Requests', str_contains($gw, '\Ticket::DEMAND_TYPE'))
 check('type set after the template predefined fields', (bool) preg_match('/\$input = \$predefined;.*?\$input\[\'type\'\]\s*=\s*\\\\Ticket::DEMAND_TYPE;/s', $gw));
 check('assigned and observer groups', str_contains($gw, "'_groups_id_assign'") && str_contains($gw, "'_groups_id_observer'"));
 check('asset technicians assigned as users (rc4)', str_contains($gw, '$input[\'_users_id_assign\'] = $users;'));
+check('business rules skipped: alarm rules on IP/description must not rewrite the hygiene assignees (rc5)', str_contains($gw, "\$input['_skip_rules']         = true;"));
+check('optional ITIL category from Setup (rc5)', str_contains($gw, "\$input['itilcategories_id'] = \$category;") && str_contains($gw, "(int) (\$this->cfg['itil_category'] ?? 0)"));
 check('requester is the service user', str_contains($gw, "'_users_id_requester'"));
 check('template mandatory fields checked', str_contains($gw, 'TicketBuilder::missingMandatory('));
 check('Request template when none configured', str_contains($gw, 'getITILTemplateToUse(0, \Ticket::DEMAND_TYPE'));
@@ -29,6 +31,7 @@ $adopt = strpos($gw, "->find(['externalid' => \$externalid, 'is_deleted' => 0, '
 check('gateway adopts an open ticket with the same externalid before adding (final #5)', $adopt !== false && $adopt < strpos($gw, '(new \Ticket())->add('));
 check('oldest liveness check first (final #4b)', str_contains($store, "'ORDER' => ['liveness_checked_at ASC', 'id']"));
 check('hygiene error kept visible', str_contains($cron, "'last_hygiene_error'"));
+check('cron passes the ITIL category to the gateway (rc5)', str_contains($cron, "'itil_category'  => \$cfg['itil_category']"));
 check('cron uses the provider registry', str_contains($cron, 'Providers::all('));
 
 $tg = (string) file_get_contents(OPM_ROOT . '/src/Ticketing/GlpiTicketGateway.php');

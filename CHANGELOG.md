@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-rc5
+
+- Fix: the hygiene tickets were rewritten by the alarm business rules. A rule such as "Description contains 10.20.10." → Assign group SysAdmin matched the device list, so the NMS ticket went to SysAdmin and ITOC was dropped from the other ticket. Hygiene tickets are now created with GLPI's `_skip_rules` flag, so the groups and technicians are exactly those set in Setup.
+- New Setup field **ITIL category of the hygiene tickets** (config key `hygiene_itil_category`, optional), since business rules no longer set one.
+- Fix (Manual page): the version parser now reads Copilot's bold header ("Versi didokumentasikan: **1.3.0**"), and the lag warning compares major.minor only, so a 1.3.0 manual does not warn on 1.3.1.
+
 ## 1.3.0-rc4
 
 - The hygiene "not in GLPI" ticket is split by domain too (Server, VM and storage / Network / Unknown category), like the NMS ticket.
