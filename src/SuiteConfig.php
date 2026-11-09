@@ -347,10 +347,10 @@ final class SuiteConfig
             . (Config::get('hygiene_enabled') === '1' ? ' checked' : '') . $disabled . '>';
         echo '<label class="form-check-label" for="opm-hy-on' . $sfx . '">' . __s('Create hygiene tickets (the classification runs daily either way)', 'opmanager') . '</label></div>';
         echo self::textRow('hygiene_frequency_days' . $sfx, 'hygiene_frequency_days', __('Days between hygiene ticket runs', 'opmanager'), Config::get('hygiene_frequency_days'), 'number', $disabled);
-        echo '<div class="mb-2"><label class="form-label">' . __s('GLPI team and asset team groups (assigned to the "not in GLPI" ticket)', 'opmanager') . '</label>';
+        echo '<div class="mb-2"><label class="form-label">' . __s('GLPI team and asset team groups (observers on the "not in GLPI" ticket)', 'opmanager') . '</label>';
         // 'value', not 'values': for multiple, Dropdown::show() copies value into values (11.0.5).
         \Group::dropdown(['name' => 'hygiene_glpi_groups[]', 'multiple' => true, 'value' => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_groups'), true) ?: [])), 'readonly' => !$canedit]);
-        echo '</div><div class="mb-2"><label class="form-label">' . __s('Asset technician(s) responsible for asset input and checks (also assigned to the "not in GLPI" ticket; optional)', 'opmanager') . '</label>';
+        echo '</div><div class="mb-2"><label class="form-label">' . __s('Asset technician(s) responsible for asset input and checks (assigned to the "not in GLPI" ticket; required to turn tickets on)', 'opmanager') . '</label>';
         // rc4. 'value' again (copied into values for multiple); a read-only User dropdown returns its HTML instead of printing it.
         echo \User::dropdown([
             'name'     => 'hygiene_glpi_users[]',

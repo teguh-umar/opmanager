@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-rc7
+
+- Change (user decision 2026-11-09, option A): the "not in GLPI" ticket has no assigned group. On production the Escalade plugin ("Remove old assign group on new group assign") keeps only the last assigned group, so of SysAdmin, ITOC and SOC L1 only SOC L1 remained. The asset technician(s) now own the ticket. The GLPI and asset team groups become **observers**, with the NMS team group.
+- Turning hygiene tickets on now needs at least one **Asset technician** and the NMS team group. The GLPI and asset team groups are optional.
+- SelfCheck `hygiene/groups` also checks that the asset technicians exist.
+
 ## 1.3.0-rc6
 
 - Fix: on the "not in GLPI" ticket, the Behaviors plugin ("Use the technician's group" = First, on ticket creation) replaced the GLPI and asset team groups with the asset technician's first group. The ticket is now created with the groups only, and the asset technician(s) are added just after, as ticket actors. Behaviors' update setting does not touch them.

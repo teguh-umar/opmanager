@@ -137,8 +137,11 @@ final class HygieneRun
 
         if ($plan['action'] === 'create') {
             $devices = array_values(array_intersect_key($rows, $current));
+            // rc7 (option A): Escalade ("Remove old assign group on new group assign") keeps only the
+            // last assigned group, so the "not in GLPI" ticket gets none: the asset technician(s) own
+            // it and the GLPI/asset groups watch it with the NMS group.
             [$assign, $observer] = $flow === 'glpi'
-                ? [$this->cfg['glpi_groups'], [$this->cfg['nms_group']]]
+                ? [[], array_values(array_unique(array_merge(array_map('intval', $this->cfg['glpi_groups']), [(int) $this->cfg['nms_group']])))]
                 : [[$this->cfg['nms_group']], []];
             $tickets_id = $this->gateway->create(
                 Report::title($flow, $now),
@@ -147,7 +150,7 @@ final class HygieneRun
                 $assign,
                 $observer,
                 self::EXTERNAL_ID_PREFIX . $flow,
-                // rc4: the asset technician(s) own the "not in GLPI" ticket with the groups.
+                // rc4/rc7: the asset technician(s) own the "not in GLPI" ticket.
                 $flow === 'glpi' ? array_map('intval', (array) ($this->cfg['glpi_users'] ?? [])) : []
             );
             if ($tickets_id <= 0) {
