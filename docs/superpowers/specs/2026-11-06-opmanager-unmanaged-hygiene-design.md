@@ -122,7 +122,7 @@ sudah ada di Setup, lewat objek core (`Ticket->add`, `ITILFollowup->add`; hub §
 
 | Alur | Isi | Assigned group | Observer group |
 |---|---|---|---|
-| **GLPI** | Kondisi A (dan A') | `hygiene_glpi_groups`: tim GLPI + tim aset (multi) | `hygiene_nms_group` |
+| **GLPI** | Kondisi A (dan A') | `hygiene_glpi_groups`: tim pendaftar aset (multi) + `hygiene_glpi_users`: teknisi penanggung jawab aset (multi, rc4) | `hygiene_nms_group` |
 | **NMS** | Kondisi B dan C, dua bagian terpisah: "kandidat hapus" dan "perlu dicek manual" | `hygiene_nms_group` | – |
 
 Aturan anti-banjir (usulan Claude, disetujui user):
@@ -140,6 +140,11 @@ Aturan anti-banjir (usulan Claude, disetujui user):
 - Isi tiket berupa tabel per perangkat: nama, IP, kategori OpManager, availability, aset GLPI
   (link bila ada), hasil cek hidup + detail, `last_seen`. Tiket juga berisi tautan ke daftar
   Devices yang sudah difilter.
+- **Tiket GLPI juga dibagi per domain dan punya teknisi penanggung jawab (rc4, keputusan user
+  2026-11-09).** Pendaftar aset: server oleh SysAdmin, network oleh ITOC, plus satu atau lebih
+  teknisi yang ditunjuk sebagai penanggung jawab input dan cek aset. Tiket GLPI di-assign ke
+  `hygiene_glpi_groups` (SysAdmin, ITOC) dan `hygiene_glpi_users`, observer `hygiene_nms_group`.
+  Isinya dibagi per domain, sama seperti tiket NMS di bawah.
 - **Tiket NMS dibagi per domain (rc3, keputusan user 2026-11-09, "Opsi A").** Tim NMS adalah
   grup bersama tim server (DCOC: server, VM, storage) dan tim network (ITOC). Tiketnya tetap
   satu dan di-assign ke `hygiene_nms_group`. Di setiap bagian (dead / unknown) ada sub-bagian
@@ -283,6 +288,7 @@ Perangkat yang di-pin manual dihitung Matched.
 | `hygiene_probe_timeout_ms` | `1000` | timeout per koneksi |
 | `hygiene_ticket_template` | `0` | template tiket kebersihan; 0 = template Request default |
 | `hygiene_glpi_groups` | `[]` | grup assigned tiket GLPI (tim GLPI + tim aset) |
+| `hygiene_glpi_users` | `[]` | rc4: user (teknisi penanggung jawab input dan cek aset) yang ikut di-assign ke tiket GLPI; opsional |
 | `hygiene_nms_group` | `0` | grup tim NMS: assigned tiket NMS dan observer tiket GLPI |
 | `last_hygiene_run` | '' | |
 | `last_hygiene_ticket_run` | '' | |

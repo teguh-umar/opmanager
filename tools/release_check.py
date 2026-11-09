@@ -44,7 +44,7 @@ def main() -> int:
             got = sha(z.read(name)) if name in files else "missing"
             print(("PASS " if got == want else "FAIL ") + f"{name} {got}")
             ok &= got == want
-        leaked = [n for n in files if n.startswith(("opmanager/tests/", "opmanager/docs/")) or n.endswith(".zip")]
+        leaked = [n for n in files if (n.startswith(("opmanager/tests/", "opmanager/docs/")) and n not in ("opmanager/docs/", "opmanager/docs/manual.md")) or n.endswith(".zip")]
         if leaked:
             print(f"FAIL dev files in zip: {leaked[:5]}")
             ok = False

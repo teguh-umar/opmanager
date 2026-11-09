@@ -42,6 +42,12 @@ class Menu
                     'page'  => \GlpiPlugin\Opmanager\Coverage\Page::getSearchURL(false),
                     'icon'  => \GlpiPlugin\Opmanager\Coverage\Page::getIcon(),
                 ],
+                // v1.3.0-rc4: the user manual (suite rule 2026-11-09).
+                'manual'   => [
+                    'title' => __('Manual', 'opmanager'),
+                    'page'  => '/plugins/opmanager/front/manual.php',
+                    'icon'  => 'ti ti-book',
+                ],
             ],
         ];
     }

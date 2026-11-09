@@ -50,6 +50,9 @@ final class SuiteConfig
         }
 
         self::statusStrip();
+        // v1.3.0-rc4: the user manual (suite rule 2026-11-09).
+        echo '<p class="mb-3"><a href="' . htmlescape(\Html::getPrefixedUrl('/plugins/opmanager/front/manual.php')) . '">'
+            . '<i class="ti ti-book me-1"></i>' . __s('Manual', 'opmanager') . '</a></p>';
 
         $labels = [
             'connection' => __('Connection', 'opmanager'),

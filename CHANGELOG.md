@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3.0-rc4
+
+- The hygiene "not in GLPI" ticket is split by domain too (Server, VM and storage / Network / Unknown category), like the NMS ticket.
+- New Setup field **Asset technician(s)** (config key `hygiene_glpi_users`, optional). Each chosen user is assigned to the "not in GLPI" ticket next to the GLPI and asset team groups.
+- New **Manual** page (suite rule 2026-11-09). It is linked from the OpManager sub-navigation and from Setup. It shows `docs/manual.md`, rendered safely with GLPI's league/commonmark: raw HTML is escaped and unsafe links are dropped. When the file is missing, the page shows a notice; when the manual documents an older version, it shows a warning. Before a build, copy `<suite>/docs/manual/opmanager.md` to `docs/manual.md` and commit it; it is the only docs file that ships in the zip.
+
 ## 1.3.0-rc3
 
 - The NMS hygiene ticket stays one ticket for the shared NMS team. Each section (dead / liveness unknown) is now split into **Server, VM and storage**, **Network** and **Unknown category**, so the server team and the network team each find their part. The domain comes from the OpManager category; when that is unknown, from the paired GLPI asset type (Computer or NetworkEquipment).
