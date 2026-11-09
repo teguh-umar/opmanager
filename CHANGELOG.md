@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0-rc6
+
+- Fix: on the "not in GLPI" ticket, the Behaviors plugin ("Use the technician's group" = First, on ticket creation) replaced the GLPI and asset team groups with the asset technician's first group. The ticket is now created with the groups only, and the asset technician(s) are added just after, as ticket actors. Behaviors' update setting does not touch them.
+
 ## 1.3.0-rc5
 
 - Fix: the hygiene tickets were rewritten by the alarm business rules. A rule such as "Description contains 10.20.10." → Assign group SysAdmin matched the device list, so the NMS ticket went to SysAdmin and ITOC was dropped from the other ticket. Hygiene tickets are now created with GLPI's `_skip_rules` flag, so the groups and technicians are exactly those set in Setup.

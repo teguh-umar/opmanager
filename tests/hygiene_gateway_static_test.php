@@ -7,7 +7,11 @@ $gw = (string) @file_get_contents(OPM_ROOT . '/src/Hygiene/GlpiHygieneGateway.ph
 check('hygiene tickets are Requests', str_contains($gw, '\Ticket::DEMAND_TYPE'));
 check('type set after the template predefined fields', (bool) preg_match('/\$input = \$predefined;.*?\$input\[\'type\'\]\s*=\s*\\\\Ticket::DEMAND_TYPE;/s', $gw));
 check('assigned and observer groups', str_contains($gw, "'_groups_id_assign'") && str_contains($gw, "'_groups_id_observer'"));
-check('asset technicians assigned as users (rc4)', str_contains($gw, '$input[\'_users_id_assign\'] = $users;'));
+// rc6: Behaviors "Use the technician's group = First" (on add) replaced the hygiene groups with the
+// technician's first group. The ticket is added with groups only; technicians follow as Ticket_User.
+check('no technician in the add input (Behaviors would replace the groups) (rc6)', !str_contains($gw, "'_users_id_assign'"));
+$tu = strpos($gw, "(new \\Ticket_User())->add(['tickets_id' => \$id, 'users_id' => \$user, 'type' => \\CommonITILActor::ASSIGN])");
+check('technicians assigned after the add through Ticket_User (rc6)', $tu !== false && $tu > strpos($gw, '(new \Ticket())->add('));
 check('business rules skipped: alarm rules on IP/description must not rewrite the hygiene assignees (rc5)', str_contains($gw, "\$input['_skip_rules']         = true;"));
 check('optional ITIL category from Setup (rc5)', str_contains($gw, "\$input['itilcategories_id'] = \$category;") && str_contains($gw, "(int) (\$this->cfg['itil_category'] ?? 0)"));
 check('requester is the service user', str_contains($gw, "'_users_id_requester'"));

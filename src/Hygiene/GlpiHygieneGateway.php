@@ -46,10 +46,6 @@ final class GlpiHygieneGateway implements HygieneGateway
         $input['users_id_recipient']  = (int) $this->cfg['service_user'];
         $input['_groups_id_assign']   = array_values(array_filter(array_map('intval', $assign_groups)));
         $input['_groups_id_observer'] = array_values(array_filter(array_map('intval', $observer_groups)));
-        $users = array_values(array_filter(array_map('intval', $assign_users)));
-        if ($users !== []) {
-            $input['_users_id_assign'] = $users;
-        }
         $input['_tickettemplate']     = $tt_id;
         $input['externalid']          = $externalid;
         // Spec §4: always a Request, even when the template predefines another type.
@@ -68,11 +64,20 @@ final class GlpiHygieneGateway implements HygieneGateway
             \Toolbox::logInFile('opmanager', sprintf("HygieneCheck: ticket \"%s\" not created, template %d mandatory field(s) not filled: %s\n", $title, $tt_id, implode(', ', $missing)));
             return 0;
         }
-        $id = (new \Ticket())->add($input);
-        if (!$id) {
+        $id = (int) (new \Ticket())->add($input);
+        if ($id <= 0) {
             \Toolbox::logInFile('opmanager', sprintf("HygieneCheck: ticket \"%s\" not created by GLPI\n", $title));
+            return 0;
         }
-        return $id ? (int) $id : 0;
+        // rc6: technicians only after the add. With a technician in the add input, Behaviors
+        // ("Use the technician's group" = First, on creation) replaced the hygiene groups with the
+        // technician's first group. Its update counterpart is a separate setting, off on production.
+        foreach (array_values(array_unique(array_filter(array_map('intval', $assign_users)))) as $user) {
+            if (!(new \Ticket_User())->add(['tickets_id' => $id, 'users_id' => $user, 'type' => \CommonITILActor::ASSIGN])) {
+                \Toolbox::logInFile('opmanager', sprintf("HygieneCheck: technician %d not assigned to ticket %d\n", $user, $id));
+            }
+        }
+        return $id;
     }
 
     public function followup(int $tickets_id, string $html): bool
