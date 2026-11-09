@@ -70,14 +70,14 @@ final class FakeGateway implements HygieneGateway
     public array $status = [];
     public int $fail_create = 0;
     public function status(int $tickets_id): ?int { return $this->status[$tickets_id] ?? 2; }
-    public function create(string $title, string $html, int $template_id, array $assign, array $observer, string $externalid = ''): int
+    public function create(string $title, string $html, int $template_id, array $assign, array $observer, string $externalid = '', array $assign_users = []): int
     {
         if ($this->fail_create > 0) {
             $this->fail_create--;
             return 0;
         }
         $id = 100 + count($this->created);
-        $this->created[$id] = compact('title', 'html', 'template_id', 'assign', 'observer', 'externalid');
+        $this->created[$id] = compact('title', 'html', 'template_id', 'assign', 'observer', 'externalid', 'assign_users');
         return $id;
     }
     public function followup(int $tickets_id, string $html): bool
@@ -96,7 +96,7 @@ $dev = static fn (int $id, string $key, string $avail, string $match, string $li
 $cfg = [
     'enabled' => true, 'frequency_days' => 7, 'unmanaged_values' => ['UnManaged', 'Device Not Monitored.'],
     'agent_stale_days' => 7, 'mist_stale_days' => 7, 'probe_cidrs' => [], 'probe_ports' => [], 'probe_timeout_ms' => 500,
-    'template_id' => 0, 'glpi_groups' => [11, 12], 'nms_group' => 20, 'service_user' => 5, 'entity_default' => 0,
+    'template_id' => 0, 'glpi_groups' => [11, 12], 'glpi_users' => [7], 'nms_group' => 20, 'service_user' => 5, 'entity_default' => 0,
     'list_url' => 'https://glpi/plugins/opmanager/front/device.php', 'device_data_fresh' => true,
 ];
 $calls = 0;
@@ -154,6 +154,8 @@ $glpi  = array_values(array_filter($g->created, static fn ($t) => str_contains($
 $nms   = array_values(array_filter($g->created, static fn ($t) => str_contains($t['title'], 'Unmanaged')))[0] ?? null;
 check('two tickets created', count($g->created) === 2 && $stats['tickets_created'] === 2);
 check('GLPI ticket: GLPI groups assigned, NMS observer', $glpi !== null && $glpi['assign'] === [11, 12] && $glpi['observer'] === [20]);
+check('GLPI ticket: asset technician assigned (rc4)', $glpi !== null && $glpi['assign_users'] === [7]);
+check('NMS ticket: no technician assigned (rc4)', $nms !== null && $nms['assign_users'] === []);
 check('NMS ticket: NMS group assigned, no observer', $nms !== null && $nms['assign'] === [20] && $nms['observer'] === []);
 check('GLPI ticket lists only the unmatched device', $glpi !== null && str_contains($glpi['html'], 'k2') && !str_contains($glpi['html'], 'k3'));
 check('items recorded per ticket', count($s->items) === 2);

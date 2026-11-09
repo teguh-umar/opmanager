@@ -7,6 +7,7 @@ $gw = (string) @file_get_contents(OPM_ROOT . '/src/Hygiene/GlpiHygieneGateway.ph
 check('hygiene tickets are Requests', str_contains($gw, '\Ticket::DEMAND_TYPE'));
 check('type set after the template predefined fields', (bool) preg_match('/\$input = \$predefined;.*?\$input\[\'type\'\]\s*=\s*\\\\Ticket::DEMAND_TYPE;/s', $gw));
 check('assigned and observer groups', str_contains($gw, "'_groups_id_assign'") && str_contains($gw, "'_groups_id_observer'"));
+check('asset technicians assigned as users (rc4)', str_contains($gw, '$input[\'_users_id_assign\'] = $users;'));
 check('requester is the service user', str_contains($gw, "'_users_id_requester'"));
 check('template mandatory fields checked', str_contains($gw, 'TicketBuilder::missingMandatory('));
 check('Request template when none configured', str_contains($gw, 'getITILTemplateToUse(0, \Ticket::DEMAND_TYPE'));

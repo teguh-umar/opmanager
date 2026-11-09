@@ -146,7 +146,9 @@ final class HygieneRun
                 (int) $this->cfg['template_id'],
                 $assign,
                 $observer,
-                self::EXTERNAL_ID_PREFIX . $flow
+                self::EXTERNAL_ID_PREFIX . $flow,
+                // rc4: the asset technician(s) own the "not in GLPI" ticket with the groups.
+                $flow === 'glpi' ? array_map('intval', (array) ($this->cfg['glpi_users'] ?? [])) : []
             );
             if ($tickets_id <= 0) {
                 $this->ticketError($stats, sprintf('%s hygiene ticket could not be created (see files/_log/opmanager.log)', $flow));

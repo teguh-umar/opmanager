@@ -26,7 +26,7 @@ final class GlpiHygieneGateway implements HygieneGateway
         return !empty($ticket->fields['is_deleted']) ? TicketGateway::TRASHED : (int) $ticket->fields['status'];
     }
 
-    public function create(string $title, string $html, int $template_id, array $assign_groups, array $observer_groups, string $externalid = ''): int
+    public function create(string $title, string $html, int $template_id, array $assign_groups, array $observer_groups, string $externalid = '', array $assign_users = []): int
     {
         // A run that died after Ticket::add but before recording it: adopt that ticket (final review #5).
         if ($externalid !== '') {
@@ -46,6 +46,10 @@ final class GlpiHygieneGateway implements HygieneGateway
         $input['users_id_recipient']  = (int) $this->cfg['service_user'];
         $input['_groups_id_assign']   = array_values(array_filter(array_map('intval', $assign_groups)));
         $input['_groups_id_observer'] = array_values(array_filter(array_map('intval', $observer_groups)));
+        $users = array_values(array_filter(array_map('intval', $assign_users)));
+        if ($users !== []) {
+            $input['_users_id_assign'] = $users;
+        }
         $input['_tickettemplate']     = $tt_id;
         $input['externalid']          = $externalid;
         // Spec §4: always a Request, even when the template predefines another type.
