@@ -76,6 +76,7 @@ final class HygieneRun
                 'name'         => (string) ($d['display_name'] !== '' ? $d['display_name'] : $d['name']),
                 'ip'           => (string) $d['ip_address'],
                 'category'     => (string) $d['device_category'],
+                'itemtype'     => (string) ($d['itemtype'] ?? ''),
                 'availability' => (string) $d['availability'],
                 'asset'        => (string) ($d['asset_label'] ?? ((string) $d['itemtype'] !== '' ? $d['itemtype'] . ' #' . $d['items_id'] : '')),
                 'state'        => $state,

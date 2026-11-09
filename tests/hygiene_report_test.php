@@ -25,6 +25,29 @@ check('body links the device list', str_contains($body, htmlspecialchars($url, E
 check('body explains exclusions', str_contains($body, 'Exclude a device from these tickets on its OpManager device page (reason required).'));
 check('body shows the liveness evidence', str_contains($body, 'TCP 22 no answer'));
 
+// Opsi A (rc3): one NMS ticket, each section split by domain so DCOC and ITOC each see their part.
+check('domain: Server is server', Report::domain('Server', '') === 'server');
+check('domain: Storage is server', Report::domain('Storage', '') === 'server');
+check('domain: Domain Controller (with space) is server', Report::domain('Domain Controller', '') === 'server');
+check('domain: Switch is network', Report::domain('Switch', '') === 'network');
+check('domain: wireless any case is network', Report::domain('WIRELESS', '') === 'network');
+check('domain: Firewall is network', Report::domain('Firewall', '') === 'network');
+check('domain: Unknown category falls back to the GLPI Computer', Report::domain('Unknown', 'Computer') === 'server');
+check('domain: Unknown category falls back to the GLPI NetworkEquipment', Report::domain('Unknown', 'NetworkEquipment') === 'network');
+check('domain: Unknown and no asset is other', Report::domain('Unknown', '') === 'other');
+check('domain: category wins over the asset type', Report::domain('Switch', 'Computer') === 'network');
+
+$sw  = ['category' => 'Switch'] + $d('s1', 'nms_dead', 'sw-one');
+$srv = $d('v1', 'nms_dead', 'srv-one');
+$unk = ['category' => 'Unknown'] + $d('x1', 'nms_dead', 'unk-one');
+$body = Report::body('nms', [$unk, $sw, $srv], $url);
+$p = static fn (string $s): int|false => strpos($body, $s);
+check('nms body: server sub-heading', $p('Server, VM and storage (1)') !== false);
+check('nms body: network sub-heading', $p('Network (1)') !== false);
+check('nms body: unknown category sub-heading', $p('Unknown category (1)') !== false);
+check('nms body: server, then network, then unknown', $p('srv-one') < $p('sw-one') && $p('sw-one') < $p('unk-one'));
+check('nms body: no empty domain heading', !str_contains(Report::body('nms', [$srv], $url), 'Network ('));
+
 $body = Report::body('glpi', [$d('g1', 'glpi_missing')], $url);
 check('glpi body has not-found section', str_contains($body, 'Not found in GLPI'));
 check('glpi body without review devices has no pairing section', !str_contains($body, 'Needs manual pairing'));
