@@ -12,6 +12,14 @@ check('commonmark: raw HTML escaped, unsafe links dropped', Manual::CONVERTER_OP
 check('version from the Indonesian header', Manual::versionOf("# x\n\nVersi didokumentasikan: 1.3.0\n") === '1.3.0');
 check('version from the English header', Manual::versionOf("Version documented: v1.2\n") === '1.2');
 check('no header, no version', Manual::versionOf("# Manual\n") === '');
+// Hub §4 lesson (integrasipaman 4.15.1-rc1): Copilot writes the version in bold.
+check('Copilot-style bold version', Manual::versionOf("> Versi didokumentasikan: **1.3.0** · Disusun: 2026-11-09\n") === '1.3.0');
+check('italic / code version', Manual::versionOf("Version documented: _1.3_\n") === '1.3' && Manual::versionOf("Versi didokumentasikan: `v1.3.0`\n") === '1.3.0');
+check('bold label and value', Manual::versionOf("**Versi didokumentasikan:** **1.3.0**\n") === '1.3.0');
+// Lag by major.minor only: a 1.3.0 manual must not warn on plugin 1.3.1.
+check('patch release does not lag', !Manual::lags('1.3.0', '1.3.1'));
+check('minor release lags', Manual::lags('1.3.0', '1.4.0'));
+check('major release lags', Manual::lags('1.9', '2.0.0-rc1'));
 
 check('older manual lags', Manual::lags('1.2.0', '1.3.0'));
 check('rc suffix ignored', !Manual::lags('1.3.0', '1.3.0-rc4'));
