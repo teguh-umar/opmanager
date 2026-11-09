@@ -48,6 +48,11 @@ check('nms body: unknown category sub-heading', $p('Unknown category (1)') !== f
 check('nms body: server, then network, then unknown', $p('srv-one') < $p('sw-one') && $p('sw-one') < $p('unk-one'));
 check('nms body: no empty domain heading', !str_contains(Report::body('nms', [$srv], $url), 'Network ('));
 
+// rc4: the "not in GLPI" ticket is split the same way (SysAdmin registers servers, ITOC network).
+$gbody = Report::body('glpi', [['category' => 'Switch'] + $d('g2', 'glpi_missing', 'gsw'), $d('g3', 'glpi_missing', 'gsrv')], $url);
+check('glpi body: split by domain, server before network', strpos($gbody, 'Server, VM and storage (1)') !== false
+    && strpos($gbody, 'Network (1)') !== false && strpos($gbody, 'gsrv') < strpos($gbody, 'gsw'));
+
 $body = Report::body('glpi', [$d('g1', 'glpi_missing')], $url);
 check('glpi body has not-found section', str_contains($body, 'Not found in GLPI'));
 check('glpi body without review devices has no pairing section', !str_contains($body, 'Needs manual pairing'));

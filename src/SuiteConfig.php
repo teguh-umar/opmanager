@@ -347,6 +347,16 @@ final class SuiteConfig
         echo '<div class="mb-2"><label class="form-label">' . __s('GLPI team and asset team groups (assigned to the "not in GLPI" ticket)', 'opmanager') . '</label>';
         // 'value', not 'values': for multiple, Dropdown::show() copies value into values (11.0.5).
         \Group::dropdown(['name' => 'hygiene_glpi_groups[]', 'multiple' => true, 'value' => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_groups'), true) ?: [])), 'readonly' => !$canedit]);
+        echo '</div><div class="mb-2"><label class="form-label">' . __s('Asset technician(s) responsible for asset input and checks (also assigned to the "not in GLPI" ticket; optional)', 'opmanager') . '</label>';
+        // rc4. 'value' again (copied into values for multiple); a read-only User dropdown returns its HTML instead of printing it.
+        echo \User::dropdown([
+            'name'     => 'hygiene_glpi_users[]',
+            'multiple' => true,
+            'value'    => array_map('intval', (array) (json_decode(Config::get('hygiene_glpi_users'), true) ?: [])),
+            'right'    => 'own_ticket',
+            'readonly' => !$canedit,
+            'display'  => false,
+        ]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('NMS team group (assigned to the "unmanaged" ticket, observer on the other)', 'opmanager') . '</label>';
         \Group::dropdown(['name' => 'hygiene_nms_group', 'value' => (int) Config::get('hygiene_nms_group'), 'readonly' => !$canedit]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('Hygiene ticket template', 'opmanager') . '</label>';

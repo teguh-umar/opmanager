@@ -42,9 +42,9 @@ namespace {
         }
     }
     class TicketTemplate { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
-    class User { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Entity { public static function dropdown($o = []) { echo "<select name='{$o['name']}'></select>"; } }
     class Group { public static function dropdown($o = []) { echo "<select name='{$o['name']}'" . (!empty($o['multiple']) ? ' multiple' : '') . " data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
+    class User { public static function dropdown($o = []) { $h = "<select name='{$o['name']}'" . (!empty($o['multiple']) ? ' multiple' : '') . " data-value='" . json_encode($o['value'] ?? null) . "' data-right='" . ($o['right'] ?? '') . "'></select>"; if (($o['display'] ?? true) === false) { return $h; } echo $h; } }
     class State { public static function dropdown($o = []) { echo "<select name='{$o['name']}' multiple data-value='" . json_encode($o['value'] ?? null) . "'></select>"; } }
     class FakeDB { public function tableExists($t) { return false; } }
     $GLOBALS['DB'] = new FakeDB();
@@ -161,15 +161,17 @@ namespace {
     ob_start();
     SuiteConfig::showForm(false);
     $html = (string) ob_get_clean();
-    foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups[]', 'hygiene_nms_group'] as $field) {
+    foreach (['hygiene_enabled', 'hygiene_frequency_days', 'hygiene_unmanaged_availabilities', 'hygiene_agent_stale_days', 'hygiene_mist_stale_days', 'hygiene_probe_cidrs', 'hygiene_probe_tcp_ports', 'hygiene_probe_timeout_ms', 'hygiene_ticket_template', 'hygiene_glpi_groups[]', 'hygiene_glpi_users[]', 'hygiene_nms_group'] as $field) {
         check("hygiene tab has {$field}", (bool) preg_match('/id="opm-tab-hygiene".*name=[\'"]' . preg_quote($field, '/') . '[\'"]/s', $html));
     }
     check('GLPI groups picker is multiple', str_contains($html, "name='hygiene_glpi_groups[]' multiple"));
 
         $GLOBALS['CFG_VALUES']['hygiene_glpi_groups'] = '[11,12]';
+        $GLOBALS['CFG_VALUES']['hygiene_glpi_users'] = '[7]';
     ob_start();
     SuiteConfig::showForm(false);
     $html = (string) ob_get_clean();
+    check('asset technicians: multiple, pre-selected via value, assignable users (rc4)', str_contains($html, "name='hygiene_glpi_users[]' multiple data-value='[7]' data-right='own_ticket'"));
     check('saved GLPI groups pre-selected via value (11.0.5), so a Setup save keeps them', str_contains($html, "name='hygiene_glpi_groups[]' multiple data-value='[11,12]'"));
 
     done();

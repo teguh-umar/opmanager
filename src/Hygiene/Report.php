@@ -21,7 +21,7 @@ final class Report
         ],
     ];
 
-    /** domain => sub-heading, in display order (NMS ticket only) */
+    /** domain => sub-heading, in display order (both flows) */
     private const DOMAINS = [
         'server'  => 'Server, VM and storage',
         'network' => 'Network',
@@ -70,11 +70,7 @@ final class Report
                 continue;
             }
             $html .= '<h3>' . self::e($heading) . ' (' . count($rows) . ')</h3>';
-            if ($flow !== 'nms') {
-                $html .= self::table($rows);
-                continue;
-            }
-            // One NMS ticket for the server and the network teams: each sees its own part.
+            // One ticket per flow for the server and the network teams: each sees its own part.
             foreach (self::DOMAINS as $domain => $label) {
                 $part = array_values(array_filter($rows, static fn (array $d): bool => self::domain((string) ($d['category'] ?? ''), (string) ($d['itemtype'] ?? '')) === $domain));
                 if ($part !== []) {

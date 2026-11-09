@@ -97,6 +97,7 @@ final class Config
         'hygiene_probe_timeout_ms'         => '1000',
         'hygiene_ticket_template'          => '0',
         'hygiene_glpi_groups'              => '[]',
+        'hygiene_glpi_users'               => '[]',
         'hygiene_nms_group'                => '0',
         'last_hygiene_run'                 => '',
         'last_hygiene_ticket_run'          => '',
@@ -346,6 +347,9 @@ final class Config
         $values['hygiene_ticket_template'] = (string) max(0, (int) ($post['hygiene_ticket_template'] ?? 0));
         $groups = array_values(array_unique(array_filter(array_map('intval', (array) ($post['hygiene_glpi_groups'] ?? [])), static fn (int $id) => $id > 0)));
         $values['hygiene_glpi_groups'] = (string) json_encode($groups);
+        // rc4: the technician(s) responsible for asset input and checks, assigned with the groups.
+        $users = array_values(array_unique(array_filter(array_map('intval', (array) ($post['hygiene_glpi_users'] ?? [])), static fn (int $id) => $id > 0)));
+        $values['hygiene_glpi_users'] = (string) json_encode($users);
         $values['hygiene_nms_group']   = (string) max(0, (int) ($post['hygiene_nms_group'] ?? 0));
 
         $enabled = !empty($post['hygiene_enabled']);
@@ -360,7 +364,7 @@ final class Config
 
     /**
      * @return array{enabled: bool, frequency_days: int, unmanaged_values: list<string>, agent_stale_days: int, mist_stale_days: int,
-     *   probe_cidrs: list<string>, probe_ports: list<int>, probe_timeout_ms: int, template_id: int, glpi_groups: list<int>, nms_group: int}
+     *   probe_cidrs: list<string>, probe_ports: list<int>, probe_timeout_ms: int, template_id: int, glpi_groups: list<int>, glpi_users: list<int>, nms_group: int}
      */
     public static function hygieneConfig(): array
     {
@@ -376,6 +380,7 @@ final class Config
             'probe_timeout_ms' => max(100, (int) self::get('hygiene_probe_timeout_ms')),
             'template_id'      => (int) self::get('hygiene_ticket_template'),
             'glpi_groups'      => array_map('intval', $list('hygiene_glpi_groups')),
+            'glpi_users'       => array_map('intval', $list('hygiene_glpi_users')),
             'nms_group'        => (int) self::get('hygiene_nms_group'),
         ];
     }
