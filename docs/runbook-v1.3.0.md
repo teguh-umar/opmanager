@@ -4,14 +4,14 @@ tags: [opmanager, runbook, hygiene, D34]
 status: active
 ---
 
-# opmanager v1.3.0-rc5: NMS hygiene runbook
+# opmanager v1.3.0-rc6: NMS hygiene runbook
 
 Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc5.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc6.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - The old folder goes to `/tmp` as a backup, never inside `plugins/` (GLPI would read it as another plugin). Rollback: move it back and run `plugin:install --force` and `plugin:activate` again.
@@ -62,7 +62,7 @@ cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) &&
 - [ ] Run `front/cron.php --force HygieneCheck`. Two Request tickets appear:
   - `[OPM-HYGIENE] Monitored in OpManager, not in GLPI - <date>`: assigned to the GLPI and asset groups and the asset technician(s), with the NMS group as observer, split into "Server, VM and storage", "Network" and "Unknown category";
   - `[OPM-HYGIENE] Unmanaged in OpManager: remove or check - <date>`: assigned to the NMS group, in two sections, "Dead" and "Liveness unknown", each split into "Server, VM and storage", "Network" and "Unknown category".
-- [ ] Ticket history (Historical tab): the assigned and observer groups and users are exactly those in Setup; no business rule replaced them, and the category is the one chosen in Setup (or empty).
+- [ ] Ticket history (Historical tab): the assigned and observer groups and users are exactly those in Setup. No business rule or Behaviors group replaced them (no "Delete a Link" line, no technician's own group added), and the category is the one chosen in Setup (or empty).
 - [ ] Run it again: no new ticket and no followup (nothing changed, tickets still open).
 - [ ] Solve the NMS ticket. The next weekly run creates a new one with the full current list.
 

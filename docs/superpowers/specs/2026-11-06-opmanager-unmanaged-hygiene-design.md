@@ -148,6 +148,12 @@ Aturan anti-banjir (usulan Claude, disetujui user):
   (`hygiene_itil_category`, opsional). Plugin Behaviors mewajibkan category sebelum Solve/Close.
   Untuk `nms`: tiket laporan apa pun yang berisi banyak IP atau perangkat sebaiknya juga melewati
   aturan tiket.
+- **Teknisi di-assign sesudah tiket dibuat (rc6).** Di production, plugin Behaviors disetel
+  "Use the technician's group" = First untuk tiket baru. Kalau input pembuatan tiket berisi
+  teknisi, Behaviors mengganti grup kebersihan dengan grup pertama teknisi itu. Karena itu tiket
+  dibuat hanya dengan grup, lalu `hygiene_glpi_users` ditambahkan lewat `Ticket_User` (ASSIGN).
+  Setting update di Behaviors ("No" di production) tidak menyentuhnya. Untuk `nms`: lakukan hal
+  yang sama.
 - **Tiket GLPI juga dibagi per domain dan punya teknisi penanggung jawab (rc4, keputusan user
   2026-11-09).** Pendaftar aset: server oleh SysAdmin, network oleh ITOC, plus satu atau lebih
   teknisi yang ditunjuk sebagai penanggung jawab input dan cek aset. Tiket GLPI di-assign ke
