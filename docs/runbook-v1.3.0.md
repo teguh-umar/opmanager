@@ -11,36 +11,37 @@ Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv1.3.0-rc4.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc4.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
-- [ ] Selfcheck prints `ALL PASS (21 passed, 0 failed)`. The new checks are `hygiene/schema`, `hygiene/cron-cli` and `hygiene/groups`.
-- [ ] Setup > Automatic actions lists **HygieneCheck** (OpManager), daily, mode CLI.
+- The old folder goes to `/tmp` as a backup, never inside `plugins/` (GLPI would read it as another plugin). Rollback: move it back and run `plugin:install --force` and `plugin:activate` again.
+- `plugin:install --force` leaves the plugin installed but **not activated**; without `plugin:activate`, selfcheck fails with `Attempted to load class "SelfCheck"`.
+
+- [x] Selfcheck prints `ALL PASS (21 passed, 0 failed)`. The new checks are `hygiene/schema`, `hygiene/cron-cli` and `hygiene/groups`.
+- [x] Setup > Automatic actions lists **HygieneCheck** (OpManager), daily, mode CLI.
 
 ## 2. Rights
 
-- [ ] Administration > Profiles > profile of the **NMS team**: OpManager > **NMS hygiene** = Read + Update.
-- [ ] Same for the profile of the **GLPI team**.
-- [ ] Super-admin already has the full right. Technician profiles have Read.
+- [x] Administration > Profiles > profile of the **NMS team**: OpManager > **NMS hygiene** = Read + Update.
+- [x] Same for the profile of the **GLPI team**.
+- [x] Super-admin already has the full right. Technician profiles have Read.
 
 ## 3. Setup (Setup > General > suite tab > OpManager > NMS hygiene)
 
-- [ ] **GLPI and asset team groups:** pick the groups that register assets: the server team (e.g. Infra > SysAdmin) and the network team (e.g. Infra > ITOC).
-- [ ] **Asset technician(s):** pick the technician(s) responsible for asset input and checks. They are assigned to the "not in GLPI" ticket with the groups. Optional.
-- [ ] **NMS team group:** pick the shared NMS group (members of both the server team and the network team, as direct members: GLPI does not notify sub-group members of a parent group).
-- [ ] **Template:** leave it empty (default Request template), or pick a Request template without mandatory fields the plugin cannot fill.
-- [ ] **Unmanaged availabilities:** `UnManaged` and `Device Not Monitored.` (default). Add any other value the device list shows for unmonitored devices.
-- [ ] **Reachable segments (CIDR):** list only the segments the GLPI server can reach. A segment that is not listed is never probed, so its devices are never declared dead by a probe.
-- [ ] **Probe ports:** keep the default `22,443,80,3389,161`, or adjust.
-- [ ] **Create hygiene tickets:** leave **off** for the first week.
-- [ ] Save.
+- [x] **GLPI and asset team groups:** pick the groups that register assets: the server team (e.g. Infra > SysAdmin) and the network team (e.g. Infra > ITOC).
+- [x] **Asset technician(s):** pick the technician(s) responsible for asset input and checks. They are assigned to the "not in GLPI" ticket with the groups. Optional.
+- [x] **NMS team group:** pick the shared NMS group (members of both the server team and the network team, as direct members: GLPI does not notify sub-group members of a parent group).
+- [x] **Template:** leave it empty (default Request template), or pick a Request template without mandatory fields the plugin cannot fill.
+- [x] **Unmanaged availabilities:** `UnManaged` and `Device Not Monitored.` (default). Add any other value the device list shows for unmonitored devices.
+- [x] **Reachable segments (CIDR):** list only the segments the GLPI server can reach. A segment that is not listed is never probed, so its devices are never declared dead by a probe.
+- [x] **Probe ports:** keep the default `22,443,80,3389,161`, or adjust.
+- [x] **Create hygiene tickets:** leave **off** for the first week.
+- [x] Save.
 
 ## 3b. Manual
 
-- [ ] OpManager sub-navigation shows **Manual** (book icon). Setup > OpManager shows a **Manual** link above the tabs.
-- [ ] Both open the Manual page. Until `docs/manual.md` ships, it shows "The user manual is not installed with this copy of the plugin."
+- [x] OpManager sub-navigation shows **Manual** (book icon). Setup > OpManager shows a **Manual** link above the tabs.
+- [x] Both open the Manual page. Until `docs/manual.md` ships, it shows "The user manual is not installed with this copy of the plugin."
 
 ## 4. First week: review only
 
