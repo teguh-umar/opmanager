@@ -153,7 +153,9 @@ $stats = $run->run($now, true);
 $glpi  = array_values(array_filter($g->created, static fn ($t) => str_contains($t['title'], 'not in GLPI')))[0] ?? null;
 $nms   = array_values(array_filter($g->created, static fn ($t) => str_contains($t['title'], 'Unmanaged')))[0] ?? null;
 check('two tickets created', count($g->created) === 2 && $stats['tickets_created'] === 2);
-check('GLPI ticket: GLPI groups assigned, NMS observer', $glpi !== null && $glpi['assign'] === [11, 12] && $glpi['observer'] === [20]);
+// rc7 (option A): Escalade keeps one assigned group only, so the "not in GLPI" ticket has no assigned group;
+// the asset technician owns it and the GLPI/asset groups watch it with the NMS group.
+check('GLPI ticket: no assigned group, GLPI groups and NMS group observe (rc7)', $glpi !== null && $glpi['assign'] === [] && $glpi['observer'] === [11, 12, 20]);
 check('GLPI ticket: asset technician assigned (rc4)', $glpi !== null && $glpi['assign_users'] === [7]);
 check('NMS ticket: no technician assigned (rc4)', $nms !== null && $nms['assign_users'] === []);
 check('NMS ticket: NMS group assigned, no observer', $nms !== null && $nms['assign'] === [20] && $nms['observer'] === []);

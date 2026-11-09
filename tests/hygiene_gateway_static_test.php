@@ -36,6 +36,8 @@ check('gateway adopts an open ticket with the same externalid before adding (fin
 check('oldest liveness check first (final #4b)', str_contains($store, "'ORDER' => ['liveness_checked_at ASC', 'id']"));
 check('hygiene error kept visible', str_contains($cron, "'last_hygiene_error'"));
 check('cron passes the ITIL category to the gateway (rc5)', str_contains($cron, "'itil_category'  => \$cfg['itil_category']"));
+$sc = (string) file_get_contents(OPM_ROOT . '/src/SelfCheck.php');
+check('selfcheck: asset technicians exist (rc7)', str_contains($sc, "(new \\User())->getFromDB(\$uid)"));
 check('cron uses the provider registry', str_contains($cron, 'Providers::all('));
 
 $tg = (string) file_get_contents(OPM_ROOT . '/src/Ticketing/GlpiTicketGateway.php');

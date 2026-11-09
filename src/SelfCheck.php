@@ -127,6 +127,11 @@ final class SelfCheck
                 foreach (array_merge($cfg['glpi_groups'], [$cfg['nms_group']]) as $gid) {
                     self::assert((new \Group())->getFromDB($gid), "hygiene group {$gid} not found");
                 }
+                // rc7: the asset technician(s) own the "not in GLPI" ticket.
+                self::assert($cfg['glpi_users'] !== [], 'no asset technician set: the "not in GLPI" ticket would have no owner');
+                foreach ($cfg['glpi_users'] as $uid) {
+                    self::assert((new \User())->getFromDB($uid), "asset technician {$uid} not found");
+                }
             },
             'matching/lookup-smoke' => static function (): void {
                 $lookup = new DbAssetLookup(Config::assetItemtypes());

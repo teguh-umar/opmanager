@@ -348,7 +348,7 @@ final class Config
         $values['hygiene_ticket_template'] = (string) max(0, (int) ($post['hygiene_ticket_template'] ?? 0));
         $groups = array_values(array_unique(array_filter(array_map('intval', (array) ($post['hygiene_glpi_groups'] ?? [])), static fn (int $id) => $id > 0)));
         $values['hygiene_glpi_groups'] = (string) json_encode($groups);
-        // rc4: the technician(s) responsible for asset input and checks, assigned with the groups.
+        // rc4: the technician(s) responsible for asset input and checks (rc7: the ticket's owners).
         $users = array_values(array_unique(array_filter(array_map('intval', (array) ($post['hygiene_glpi_users'] ?? [])), static fn (int $id) => $id > 0)));
         $values['hygiene_glpi_users'] = (string) json_encode($users);
         // rc5: tickets skip the business rules, so the ITIL category comes from here (0 = none).
@@ -356,8 +356,9 @@ final class Config
         $values['hygiene_nms_group']   = (string) max(0, (int) ($post['hygiene_nms_group'] ?? 0));
 
         $enabled = !empty($post['hygiene_enabled']);
-        if ($enabled && ($groups === [] || $values['hygiene_nms_group'] === '0')) {
-            $errors[] = __('NMS hygiene tickets need the GLPI/asset team group(s) and the NMS team group; tickets stay off', 'opmanager');
+        // rc7 (option A): the asset technician(s) own the "not in GLPI" ticket; the groups only watch it.
+        if ($enabled && ($users === [] || $values['hygiene_nms_group'] === '0')) {
+            $errors[] = __('NMS hygiene tickets need at least one asset technician and the NMS team group; tickets stay off', 'opmanager');
             $enabled  = false;
         }
         $values['hygiene_enabled'] = $enabled ? '1' : '0';

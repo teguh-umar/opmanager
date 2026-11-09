@@ -122,7 +122,7 @@ sudah ada di Setup, lewat objek core (`Ticket->add`, `ITILFollowup->add`; hub §
 
 | Alur | Isi | Assigned group | Observer group |
 |---|---|---|---|
-| **GLPI** | Kondisi A (dan A') | `hygiene_glpi_groups`: tim pendaftar aset (multi) + `hygiene_glpi_users`: teknisi penanggung jawab aset (multi, rc4) | `hygiene_nms_group` |
+| **GLPI** | Kondisi A (dan A') | rc7: tidak ada grup; user `hygiene_glpi_users` (teknisi penanggung jawab aset, wajib) | `hygiene_glpi_groups` (multi) + `hygiene_nms_group` |
 | **NMS** | Kondisi B dan C, dua bagian terpisah: "kandidat hapus" dan "perlu dicek manual" | `hygiene_nms_group` | – |
 
 Aturan anti-banjir (usulan Claude, disetujui user):
@@ -148,6 +148,13 @@ Aturan anti-banjir (usulan Claude, disetujui user):
   (`hygiene_itil_category`, opsional). Plugin Behaviors mewajibkan category sebelum Solve/Close.
   Untuk `nms`: tiket laporan apa pun yang berisi banyak IP atau perangkat sebaiknya juga melewati
   aturan tiket.
+- **Tiket GLPI tanpa grup teknisi (rc7, keputusan user 2026-11-09, opsi A).** Di production,
+  plugin Escalade disetel "Remove old assign group on new group assign", sehingga satu tiket
+  hanya bisa punya satu grup teknisi: setiap grup baru menghapus grup lama. Karena itu tiket GLPI
+  di-assign ke teknisi penanggung jawab aset (`hygiene_glpi_users`, wajib untuk menyalakan tiket),
+  dan `hygiene_glpi_groups` (mis. SysAdmin, ITOC, SOC L1) menjadi observer bersama
+  `hygiene_nms_group`. Tiket NMS tetap satu grup teknisi. Untuk `nms`: jangan pernah meng-assign
+  lebih dari satu grup teknisi ke satu tiket.
 - **Teknisi di-assign sesudah tiket dibuat (rc6).** Di production, plugin Behaviors disetel
   "Use the technician's group" = First untuk tiket baru. Kalau input pembuatan tiket berisi
   teknisi, Behaviors mengganti grup kebersihan dengan grup pertama teknisi itu. Karena itu tiket
@@ -301,7 +308,7 @@ Perangkat yang di-pin manual dihitung Matched.
 | `hygiene_probe_tcp_ports` | `[22,443,80,3389,161]` *(usulan)* | port yang dicoba (161 hanya bermakna untuk TCP; builder boleh mengganti) |
 | `hygiene_probe_timeout_ms` | `1000` | timeout per koneksi |
 | `hygiene_ticket_template` | `0` | template tiket kebersihan; 0 = template Request default |
-| `hygiene_glpi_groups` | `[]` | grup assigned tiket GLPI (tim GLPI + tim aset) |
+| `hygiene_glpi_groups` | `[]` | grup tiket GLPI (tim GLPI + tim aset); rc7: observer, opsional |
 | `hygiene_glpi_users` | `[]` | rc4: user (teknisi penanggung jawab input dan cek aset) yang ikut di-assign ke tiket GLPI; opsional |
 | `hygiene_itil_category` | `0` | rc5: ITIL category kedua tiket kebersihan; 0 = tanpa category |
 | `hygiene_nms_group` | `0` | grup tim NMS: assigned tiket NMS dan observer tiket GLPI |
