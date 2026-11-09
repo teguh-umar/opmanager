@@ -33,16 +33,18 @@ final class Manual
     /** The version the manual documents ("Versi didokumentasikan: 1.3.0" or "Version documented: 1.3.0"). */
     public static function versionOf(string $markdown): string
     {
-        return preg_match('/(?:Versi didokumentasikan|Version documented)\s*:\s*v?(\d+(?:\.\d+){1,2})/i', $markdown, $m) === 1 ? $m[1] : '';
+        // Markdown emphasis around the label or the value is skipped: Copilot writes "**1.3.0**" (hub §4).
+        return preg_match('/(?:Versi didokumentasikan|Version documented)[*_`\s]*:[*_`\s]*v?(\d+(?:\.\d+){1,2})/i', $markdown, $m) === 1 ? $m[1] : '';
     }
 
-    /** True when the manual documents an older release than the installed plugin (rc suffix ignored). */
+    /** True when the manual documents an older major.minor than the installed plugin (patch and rc ignored). */
     public static function lags(string $manual_version, string $plugin_version): bool
     {
         if ($manual_version === '') {
             return false;
         }
-        return version_compare($manual_version, (string) preg_replace('/-.*$/', '', $plugin_version), '<');
+        $minor = static fn (string $v): string => implode('.', array_slice(array_pad(explode('.', (string) preg_replace('/-.*$/', '', $v)), 2, '0'), 0, 2));
+        return version_compare($minor($manual_version), $minor($plugin_version), '<');
     }
 
     /** Markdown to safe HTML. Without commonmark (never on GLPI 11) the text is shown escaped. */
