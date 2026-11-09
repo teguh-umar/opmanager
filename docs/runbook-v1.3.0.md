@@ -4,14 +4,14 @@ tags: [opmanager, runbook, hygiene, D34]
 status: active
 ---
 
-# opmanager v1.3.0-rc2: NMS hygiene runbook
+# opmanager v1.3.0-rc3: NMS hygiene runbook
 
 Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv1.3.0-rc2.zip && sudo chown -R nginx: opmanager
+cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv1.3.0-rc3.zip && sudo chown -R nginx: opmanager
 sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
 sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
@@ -27,8 +27,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 
 ## 3. Setup (Setup > General > suite tab > OpManager > NMS hygiene)
 
-- [ ] **GLPI and asset team groups:** pick both groups.
-- [ ] **NMS team group:** pick it.
+- [ ] **GLPI and asset team groups:** pick the GLPI team group and the asset team group only. Do not pick a server or network team here: they are informed through the NMS group (observer).
+- [ ] **NMS team group:** pick the shared NMS group (members of both the server team and the network team, as direct members: GLPI does not notify sub-group members of a parent group).
 - [ ] **Template:** leave it empty (default Request template), or pick a Request template without mandatory fields the plugin cannot fill.
 - [ ] **Unmanaged availabilities:** `UnManaged` and `Device Not Monitored.` (default). Add any other value the device list shows for unmonitored devices.
 - [ ] **Reachable segments (CIDR):** list only the segments the GLPI server can reach. A segment that is not listed is never probed, so its devices are never declared dead by a probe.
@@ -51,7 +51,7 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 - [ ] The first run after enabling creates the tickets at once (no ticket run was recorded while they were off).
 - [ ] Run `front/cron.php --force HygieneCheck`. Two Request tickets appear:
   - `[OPM-HYGIENE] Monitored in OpManager, not in GLPI - <date>`: assigned to the GLPI and asset groups, with the NMS group as observer;
-  - `[OPM-HYGIENE] Unmanaged in OpManager: remove or check - <date>`: assigned to the NMS group, in two sections, "Dead" and "Liveness unknown".
+  - `[OPM-HYGIENE] Unmanaged in OpManager: remove or check - <date>`: assigned to the NMS group, in two sections, "Dead" and "Liveness unknown", each split into "Server, VM and storage", "Network" and "Unknown category".
 - [ ] Run it again: no new ticket and no followup (nothing changed, tickets still open).
 - [ ] Solve the NMS ticket. The next weekly run creates a new one with the full current list.
 

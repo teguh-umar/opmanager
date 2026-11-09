@@ -140,6 +140,14 @@ Aturan anti-banjir (usulan Claude, disetujui user):
 - Isi tiket berupa tabel per perangkat: nama, IP, kategori OpManager, availability, aset GLPI
   (link bila ada), hasil cek hidup + detail, `last_seen`. Tiket juga berisi tautan ke daftar
   Devices yang sudah difilter.
+- **Tiket NMS dibagi per domain (rc3, keputusan user 2026-11-09, "Opsi A").** Tim NMS adalah
+  grup bersama tim server (DCOC: server, VM, storage) dan tim network (ITOC). Tiketnya tetap
+  satu dan di-assign ke `hygiene_nms_group`. Di setiap bagian (dead / unknown) ada sub-bagian
+  "Server, VM and storage", "Network" dan "Unknown category". Domain ditentukan dari kategori
+  OpManager (`Report::domain()`). Bila kategori tidak dikenal, domain diambil dari itemtype aset
+  GLPI yang dipasangkan (Computer → server, NetworkEquipment → network). Tanpa itemtype,
+  perangkat masuk "Unknown category". Followup tidak dibagi; kolom Category tetap ada. Tiket
+  per tim (Opsi B) ditunda sampai terbukti perlu.
 - Entity tiket: `ticket_entity_default` yang sudah ada. *(usulan)*
 - Template tiket memakai config key sendiri, `hygiene_ticket_template`. Template alarm
   (`ticket_template`) tidak dipakai, karena template itu dibuat untuk Incident alarm dan field

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0-rc3
+
+- The NMS hygiene ticket stays one ticket for the shared NMS team. Each section (dead / liveness unknown) is now split into **Server, VM and storage**, **Network** and **Unknown category**, so the server team and the network team each find their part. The domain comes from the OpManager category; when that is unknown, from the paired GLPI asset type (Computer or NetworkEquipment).
+
 ## 1.3.0-rc2
 
 - Fix: in the Profile rights matrix, the new hygiene right showed as a second "Monitoring" row. It is now labelled **NMS hygiene**.

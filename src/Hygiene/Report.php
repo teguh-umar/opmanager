@@ -21,6 +21,34 @@ final class Report
         ],
     ];
 
+    /** domain => sub-heading, in display order (NMS ticket only) */
+    private const DOMAINS = [
+        'server'  => 'Server, VM and storage',
+        'network' => 'Network',
+        'other'   => 'Unknown category',
+    ];
+
+    /** OpManager categories, lower case without spaces or dashes. */
+    private const SERVER_CATEGORIES  = ['server', 'desktop', 'domaincontroller', 'storage', 'virtualdevice', 'virtualmachine', 'hypervisor', 'vmware', 'hyperv'];
+    private const NETWORK_CATEGORIES = ['router', 'switch', 'firewall', 'wireless', 'wirelesscontroller', 'accesspoint', 'loadbalancer', 'wanaccelerator'];
+
+    /** 'server' | 'network' | 'other': the OpManager category first, else the paired GLPI asset type. */
+    public static function domain(string $category, string $itemtype): string
+    {
+        $c = str_replace([' ', '-', '_'], '', strtolower(trim($category)));
+        if (in_array($c, self::SERVER_CATEGORIES, true)) {
+            return 'server';
+        }
+        if (in_array($c, self::NETWORK_CATEGORIES, true)) {
+            return 'network';
+        }
+        return match (ltrim($itemtype, '\\')) {
+            'Computer'         => 'server',
+            'NetworkEquipment' => 'network',
+            default            => 'other',
+        };
+    }
+
     public static function title(string $flow, string $now): string
     {
         $date = substr($now, 0, 10);
@@ -38,8 +66,20 @@ final class Report
         $html = '<p>' . self::e($intro) . '</p>';
         foreach (self::SECTIONS[$flow] ?? [] as $state => $heading) {
             $rows = array_values(array_filter($devices, static fn (array $d): bool => $d['state'] === $state));
-            if ($rows !== []) {
-                $html .= '<h3>' . self::e($heading) . ' (' . count($rows) . ')</h3>' . self::table($rows);
+            if ($rows === []) {
+                continue;
+            }
+            $html .= '<h3>' . self::e($heading) . ' (' . count($rows) . ')</h3>';
+            if ($flow !== 'nms') {
+                $html .= self::table($rows);
+                continue;
+            }
+            // One NMS ticket for the server and the network teams: each sees its own part.
+            foreach (self::DOMAINS as $domain => $label) {
+                $part = array_values(array_filter($rows, static fn (array $d): bool => self::domain((string) ($d['category'] ?? ''), (string) ($d['itemtype'] ?? '')) === $domain));
+                if ($part !== []) {
+                    $html .= '<h4>' . self::e($label) . ' (' . count($part) . ')</h4>' . self::table($part);
+                }
             }
         }
         $html .= '<p><a href="' . self::e($list_url) . '">' . self::e('Open the OpManager device list') . '</a></p>';
