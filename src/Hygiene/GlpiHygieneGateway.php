@@ -12,7 +12,7 @@ use GlpiPlugin\Opmanager\Ticketing\TicketGateway;
  */
 final class GlpiHygieneGateway implements HygieneGateway
 {
-    /** @param array{service_user: int, entity_default: int} $cfg */
+    /** @param array{service_user: int, entity_default: int, itil_category?: int} $cfg */
     public function __construct(private array $cfg)
     {
     }
@@ -54,6 +54,14 @@ final class GlpiHygieneGateway implements HygieneGateway
         $input['externalid']          = $externalid;
         // Spec §4: always a Request, even when the template predefines another type.
         $input['type']                = \Ticket::DEMAND_TYPE;
+        // rc5: a report lists dozens of IPs and categories, so the alarm business rules (Description
+        // contains "10.20.10." or "Category: Server" -> Assign group) matched it and replaced the
+        // hygiene groups. Core flag (CommonITILObject::processRules): no ticket rules on this add.
+        $input['_skip_rules']         = true;
+        $category = (int) ($this->cfg['itil_category'] ?? 0);
+        if ($category > 0) {
+            $input['itilcategories_id'] = $category;
+        }
 
         $missing = TicketBuilder::missingMandatory($input, $mandatory);
         if ($missing !== []) {

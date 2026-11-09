@@ -360,6 +360,8 @@ final class SuiteConfig
             'readonly' => !$canedit,
             'display'  => false,
         ]);
+        echo '</div><div class="mb-2"><label class="form-label">' . __s('ITIL category of the hygiene tickets (they skip the ticket business rules; empty = none)', 'opmanager') . '</label>';
+        \ITILCategory::dropdown(['name' => 'hygiene_itil_category', 'value' => (int) Config::get('hygiene_itil_category'), 'readonly' => !$canedit]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('NMS team group (assigned to the "unmanaged" ticket, observer on the other)', 'opmanager') . '</label>';
         \Group::dropdown(['name' => 'hygiene_nms_group', 'value' => (int) Config::get('hygiene_nms_group'), 'readonly' => !$canedit]);
         echo '</div><div class="mb-2"><label class="form-label">' . __s('Hygiene ticket template', 'opmanager') . '</label>';

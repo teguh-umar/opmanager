@@ -158,7 +158,11 @@ final class Cron extends \CommonGLPI
         $run = new \GlpiPlugin\Opmanager\Hygiene\HygieneRun(
             new \GlpiPlugin\Opmanager\Hygiene\DbHygieneStore(),
             \GlpiPlugin\Opmanager\Hygiene\Providers::all($cfg),
-            new \GlpiPlugin\Opmanager\Hygiene\GlpiHygieneGateway(['service_user' => $tcf['service_user'], 'entity_default' => $tcf['entity_default']]),
+            new \GlpiPlugin\Opmanager\Hygiene\GlpiHygieneGateway([
+                'service_user'   => $tcf['service_user'],
+                'entity_default' => $tcf['entity_default'],
+                'itil_category'  => $cfg['itil_category'],
+            ]),
             $cfg + [
                 'service_user'   => $tcf['service_user'],
                 'entity_default' => $tcf['entity_default'],
