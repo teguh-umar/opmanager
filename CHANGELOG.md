@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.2
+
+Same as 1.3.2-rc1, which passed the production check on 2026-11-10 (the Manual page shows "Manual for version 1.3.1" with no lag warning).
+
 ## 1.3.2-rc1
 
 - Docs only, no code change: `docs/manual.md` is Copilot's 1.3.1 revision of the manual. It documents 1.3.1, and its labels now match the screens ("Exclude from hygiene tickets", "Monitored and in GLPI").
