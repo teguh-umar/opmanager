@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+Same code as 1.3.0-rc7, which passed the production check on 2026-11-10. The rc sections below list the details.
+
+- **NMS hygiene (D34).** Every OpManager device gets a hygiene condition, from its monitoring state plus liveness evidence. The evidence comes from the GLPI agent, Mist and a TCP probe inside the listed segments. Other plugins can add evidence sources through the `opmanager_liveness` hook. The plugin never changes anything in OpManager.
+- **Weekly Request tickets.** These tickets skip the ticket business rules, and each list is split into Server/VM/storage, Network and Unknown category.
+  - **"Monitored in OpManager, not in GLPI":** assigned to the asset technician(s). The GLPI and asset team groups and the NMS team group are observers.
+  - **"Unmanaged in OpManager: remove or check":** assigned to the NMS team group.
+  - Later runs add followups to the open tickets.
+- **Per-device exceptions** with a reason and a history. They need the new right **NMS hygiene**.
+- **Manual page**, linked from the sub-navigation and from Setup. It shows `docs/manual.md` once that file ships.
+- **Fixes:** the Profile rights matrix now has one label per right, and the SelfCheck lib SHAs match the shipped files.
+
 ## 1.3.0-rc7
 
 - Change (user decision 2026-11-09, option A): the "not in GLPI" ticket has no assigned group. On production the Escalade plugin ("Remove old assign group on new group assign") keeps only the last assigned group, so of SysAdmin, ITOC and SOC L1 only SOC L1 remained. The asset technician(s) now own the ticket. The GLPI and asset team groups become **observers**, with the NMS team group.

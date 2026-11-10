@@ -4,14 +4,14 @@ tags: [opmanager, runbook, hygiene, D34]
 status: active
 ---
 
-# opmanager v1.3.0-rc7: NMS hygiene runbook
+# opmanager v1.3.0: NMS hygiene runbook
 
 Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0-rc7.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0.zip && sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force && sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - The old folder goes to `/tmp` as a backup, never inside `plugins/` (GLPI would read it as another plugin). Rollback: move it back and run `plugin:install --force` and `plugin:activate` again.
