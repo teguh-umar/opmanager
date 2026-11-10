@@ -32,7 +32,7 @@ check('unknown manual version never lags', !Manual::lags('', '1.3.0'));
 // 1.3.1: the shipped manual (Copilot, suite docs/manual/opmanager.md) documents 1.3.0 and must not warn.
 $shipped = Manual::read();
 check('docs/manual.md ships (1.3.1)', $shipped !== null);
-check('shipped manual documents 1.3.0', Manual::versionOf((string) $shipped) === '1.3.0');
+check('shipped manual documents 1.3.1', Manual::versionOf((string) $shipped) === '1.3.1');
 check('shipped manual does not lag the plugin version', !Manual::lags(Manual::versionOf((string) $shipped), PLUGIN_OPMANAGER_VERSION_UNDER_TEST));
 check('shipped manual is Copilot\'s suite copy, byte for byte', is_file(dirname(OPM_ROOT, 2) . '/docs/manual/opmanager.md') === false
     || hash_file('sha256', dirname(OPM_ROOT, 2) . '/docs/manual/opmanager.md') === hash_file('sha256', Manual::path()));
