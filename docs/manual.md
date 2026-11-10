@@ -1,16 +1,19 @@
 # ManageEngine OpManager integration (`opmanager`) — Manual Penggunaan
 
-> Versi didokumentasikan: **1.3.0** · Status rilis: **1.3.0 FINAL**, kode sama dengan 1.3.0-rc7 yang lulus pemeriksaan produksi pada 2026-11-10 · Terakhir diperbarui: 2026-11-10
+> Versi didokumentasikan: **1.3.1** · Status rilis: **1.3.1 FINAL** (tag `1.3.1`, commit `b2a0ee6`) · Terakhir diperbarui: 2026-11-10
 
 ## 1. Ringkasan
 
 Plugin **ManageEngine OpManager integration** menghubungkan inventori dan alarm OpManager dengan aset serta tiket GLPI. Plugin mencocokkan perangkat OpManager dengan aset GLPI, menampilkan alarm pada aset, menyediakan laporan Coverage, dan dapat membuat tiket dari alarm. Teknisi juga dapat mengirim catatan dan tindakan penanganan dari GLPI kembali ke OpManager.
 
-Sejak versi 1.3.0, fitur **NMS hygiene** mengidentifikasi perangkat yang dipantau tetapi belum tercatat di GLPI, serta perangkat yang tidak lagi dipantau namun perlu diperiksa. Fitur ini membantu tim GLPI dan NMS menindaklanjuti daftar tersebut melalui tiket Request berkala.
+Mulai versi 1.3.1, manual ini juga tersedia dari dalam plugin melalui menu **Manual**. Jika versi major.minor manual lebih lama daripada plugin terpasang, halaman Manual menampilkan peringatan bahwa beberapa layar mungkin berbeda.
+
+Fitur **NMS hygiene** mengidentifikasi perangkat production yang dipantau tetapi belum tercatat di GLPI, serta perangkat yang tidak lagi dipantau namun perlu diperiksa. Fitur ini membantu tim GLPI dan NMS menindaklanjuti daftar tersebut melalui tiket Request berkala.
 
 Prinsip penting:
 
 - GLPI adalah sumber kebenaran untuk pencatatan aset; OpManager adalah sistem monitoring.
+- OpManager hanya memantau perangkat production. Aset dev/staging di GLPI memang tidak ada di OpManager dan bukan celah Coverage atau temuan NMS hygiene.
 - Plugin tidak membuat aset GLPI dari perangkat OpManager.
 - Plugin tidak mengubah, menghapus, atau melakukan manage/unmanage perangkat di OpManager. Tindakan tersebut dilakukan oleh tim NMS.
 - Aset GLPI yang tidak dipantau OpManager tidak otomatis dianggap bermasalah.
@@ -29,7 +32,7 @@ Plugin tersedia di menu bersama **ICT Tools** (nama menu dapat dikonfigurasi ole
 
 Tab perangkat pada item aset GLPI menampilkan bagian **Monitoring** berisi perangkat OpManager yang cocok dan alarm terkait. Kartu dashboard GLPI tersedia melalui **Home → Dashboard → Edit → Add widget**, dalam grup **OpManager**.
 
-Pengaturan plugin ada di **Setup → General → PGN Suite → OpManager**. Pada instalasi yang masih menggunakan halaman konfigurasi plugin langsung, tautan **Setup** juga tersedia dari baris plugin di **Setup → Plugins**. Susunan nama tab PGN Suite dapat mengikuti plugin suite yang pertama kali dimuat.
+Pengaturan plugin ada di tab **OpManager** pada halaman konfigurasi **PGN Suite**. Bergantung pada plugin suite yang pertama kali dimuat, PGN Suite dapat muncul sebagai entri tersendiri di sidebar **Setup** atau sebagai tab di **Setup → General**. Pada instalasi yang masih menggunakan halaman konfigurasi plugin langsung, buka **Setup → Plugins**, lalu pilih **Setup** pada baris plugin.
 
 ## 3. Hak akses
 
@@ -45,7 +48,7 @@ Berikan hak minimum sesuai tugas. Hak **Update** NMS hygiene perlu diberikan kep
 
 ## 4. Pengaturan
 
-Lokasi utama: **Setup → General → PGN Suite → OpManager**. Hanya pengguna dengan hak **Configuration** yang sesuai dapat membuka atau menyimpan pengaturan.
+Lokasi: **Setup → PGN Suite → OpManager** bila PGN Suite tampil sebagai entri sidebar, atau **Setup → General → PGN Suite → OpManager** bila PGN Suite tampil sebagai tab di General. Jika halaman konfigurasi plugin masih terpisah, buka **Setup → Plugins → Setup** pada baris OpManager. Hanya pengguna dengan hak **Configuration** yang sesuai dapat membuka atau menyimpan pengaturan.
 
 | Tab | Pengaturan dan tujuan |
 |---|---|
@@ -111,12 +114,12 @@ Kondisi perangkat mempertimbangkan status monitoring OpManager, pencocokan GLPI,
 
 | Kondisi | Arti dan tindak lanjut |
 |---|---|
-| **Monitored, not in GLPI** | Dipantau tetapi belum ditemukan sebagai aset GLPI; tinjau dan daftarkan/pasangkan melalui proses GLPI |
+| **Monitored, not in GLPI** | Perangkat production dipantau tetapi belum ditemukan sebagai aset GLPI; tinjau dan daftarkan/pasangkan melalui proses GLPI |
 | **Monitored, needs manual pairing** | Perlu peninjauan pasangan aset |
 | **Unmanaged, dead** | Tidak dimonitor dan bukti yang tersedia menunjukkan perangkat tidak hidup; tim NMS memeriksa apakah perlu dihapus dari OpManager |
 | **Unmanaged, liveness unknown** | Tidak dimonitor dan bukti hidup tidak tersedia; perlu pemeriksaan manual tim NMS |
 | **Unmanaged, still alive** | Tidak dimonitor tetapi terbukti hidup; ditampilkan sebagai informasi dan tidak masuk tiket |
-| **Fine** | Tidak memerlukan tindak lanjut hygiene |
+| **Monitored and in GLPI** | Perangkat production dipantau dan sudah cocok dengan aset GLPI; tidak memerlukan tindak lanjut hygiene |
 | **Excluded from hygiene tickets** | Dikecualikan dari kedua alur tiket |
 
 Bukti liveness dapat berasal dari GLPI agent, plugin Juniper Mist yang aktif, dan probe TCP pada CIDR yang dikonfigurasi. Satu bukti **alive** mengalahkan bukti **dead**; status **dead** digunakan bila ada bukti dead tanpa bukti alive; bila tidak ada sumber bukti yang berlaku, hasilnya **unknown**. Perangkat yang tidak dimonitor hanya diperiksa liveness-nya bila tidak dikecualikan.
@@ -128,7 +131,7 @@ Ketika tiket hygiene diaktifkan, plugin membuat paling banyak dua tiket Request 
 
 Perangkat tanpa temuan untuk suatu alur tidak menghasilkan tiket kosong. Selama tiket alur masih terbuka, run berikutnya tidak membuat tiket baru; followup hanya dibuat jika ada perubahan yang perlu dilaporkan. Jika tiket lama sudah Solved, Closed, atau dihapus, run berikutnya dapat membuat tiket baru berdasarkan kondisi terkini.
 
-Untuk mengecualikan perangkat, buka halaman perangkat, pilih **Kecualikan dari tiket**, dan isi alasan. Pengguna dengan hak NMS hygiene **Update** dapat membatalkan pengecualian. Riwayat mencatat siapa dan kapan pengecualian dibuat/dibatalkan; perangkat yang dikecualikan tidak masuk kedua alur tiket.
+Untuk mengecualikan perangkat, buka halaman perangkat, pilih **Exclude from hygiene tickets**, dan isi alasan. Pengguna dengan hak NMS hygiene **Update** dapat membatalkan pengecualian. Riwayat mencatat siapa dan kapan pengecualian dibuat/dibatalkan; perangkat yang dikecualikan tidak masuk kedua alur tiket.
 
 ### Dashboard
 
@@ -189,6 +192,6 @@ Deploy paket plugin yang disetujui oleh administrator GLPI. Instalasi dan upgrad
 
 ## 10. Status verifikasi dan batas cakupan
 
-Versi **1.3.0 FINAL** memakai kode yang sama dengan **1.3.0-rc7**, yang lulus pemeriksaan produksi pada **2026-11-10**. Catatan rilis mengonfirmasi fitur NMS hygiene dan alur tiketnya. Runbook 1.3.0 juga mencatat pemeriksaan instalasi, hak akses, konfigurasi, dan alur tiket; beberapa butir penerimaan manual masih berupa langkah yang perlu diverifikasi oleh administrator pada lingkungan masing-masing.
+Versi **1.3.1 FINAL** menambahkan manual di dalam plugin; tidak ada perubahan fungsi lain dari 1.3.0. Versi 1.3.0-rc7 lulus pemeriksaan produksi pada **2026-11-10**. Catatan rilis mengonfirmasi fitur NMS hygiene dan alur tiketnya. Runbook 1.3.0 juga mencatat pemeriksaan instalasi, hak akses, konfigurasi, dan alur tiket; beberapa butir penerimaan manual masih berupa langkah yang perlu diverifikasi oleh administrator pada lingkungan masing-masing.
 
 Karena itu, status ini bukan jaminan bahwa setiap koneksi, pemetaan aset, kriteria alarm, CIDR, kategori ITIL, template, hak profil, atau penerima tiket di semua instalasi sudah benar. Validasi nilai tersebut di GLPI dan OpManager sebelum mengaktifkan pembuatan tiket hygiene.
