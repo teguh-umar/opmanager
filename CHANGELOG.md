@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.1
+
+Same as 1.3.1-rc1, which passed the production check on 2026-11-10 (the Manual page shows "Manual for version 1.3.0" with no lag warning).
+
 ## 1.3.1-rc1
 
 - Docs only, no code change: the user manual (Copilot, suite `docs/manual/opmanager.md`, documents 1.3.0) now ships as `docs/manual.md`. The **Manual** page shows it instead of the "not installed" notice.
