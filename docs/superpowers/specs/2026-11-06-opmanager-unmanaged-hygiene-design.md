@@ -22,6 +22,8 @@ Prinsip (user):
 
 - **GLPI adalah single source of truth untuk aset. NMS hanya alat monitoring.**
 - Aset GLPI yang tidak ada di NMS **bukan masalah**, karena tidak semua aset dimonitor.
+  OpManager hanya memonitor perangkat **production**; aset dev/staging di GLPI memang tidak ada
+  di OpManager dan tidak pernah dicek (user, 2026-11-10).
   Fitur ini tidak pernah melaporkan arah itu.
 - Perangkat yang **dimonitor di NMS tetapi tidak ada di GLPI adalah masalah**: ada perangkat
   aktif yang tidak tercatat sebagai aset.
