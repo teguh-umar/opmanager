@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.3-rc1
+
+- **Deprecation notice, no code change.** opmanager will be archived. Its successor is **NMS Integration** (`nms`), which starts from opmanager 1.3.2, behaves the same for OpManager, and copies opmanager's settings, data and profile rights when it is installed. opmanager gets no new features. It receives fixes only until the production cutover to nms; after that the repository is archived (read-only).
+- New `README.md`: what the plugin does, requirements, rights, automatic actions, install, and the steps for moving to nms (install nms next to opmanager, check the copy, then deactivate opmanager, copy again, change the OpManager webhook URL to `/plugins/nms/front/webhook.php`, and activate the nms connection). Keep opmanager deactivated, not uninstalled, until nms has run cleanly, because uninstalling drops its tables.
+
 ## 1.3.2
 
 Same as 1.3.2-rc1, which passed the production check on 2026-11-10 (the Manual page shows "Manual for version 1.3.1" with no lag warning).
