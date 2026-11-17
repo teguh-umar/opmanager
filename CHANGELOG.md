@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.3
+
+Same as 1.3.3-rc1 (docs only, no code change; released at the user's order without a VM pass, since the only change is the new README). **Deprecated:** opmanager will be archived after the production cutover to NMS Integration (`nms`); see `README.md`.
+
 ## 1.3.3-rc1
 
 - **Deprecation notice, no code change.** opmanager will be archived. Its successor is **NMS Integration** (`nms`), which starts from opmanager 1.3.2, behaves the same for OpManager, and copies opmanager's settings, data and profile rights when it is installed. opmanager gets no new features. It receives fixes only until the production cutover to nms; after that the repository is archived (read-only).

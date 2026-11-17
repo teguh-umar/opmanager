@@ -7,7 +7,7 @@
  * @license GPL-3.0-or-later
  */
 
-define('PLUGIN_OPMANAGER_VERSION', '1.3.3-rc1');
+define('PLUGIN_OPMANAGER_VERSION', '1.3.3');
 define('PLUGIN_OPMANAGER_MIN_GLPI', '11.0.0');
 define('PLUGIN_OPMANAGER_MAX_GLPI', '11.99.99');
 
