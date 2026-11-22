@@ -66,7 +66,7 @@ php <glpi>/bin/console glpi:plugin:activate opmanager
 php <glpi>/bin/console glpi:cache:clear
 ```
 
-Then configure the plugin in Setup > General > PGN Suite > OpManager, and run
+Then configure the plugin in Setup > ICT Tools > OpManager, and run
 `tools/selfcheck.php`.
 
 **New installs should use NMS Integration instead.**
@@ -105,6 +105,27 @@ The step-by-step runbook ships with nms as `docs/runbook-1.0.0.md`.
 | 1.3.x | last line. Fixes only until the cutover to nms, then archived |
 | < 1.3 | unsupported |
 
-## License
+## Data it stores
 
-GPL-3.0-or-later, the same as GLPI.
+`glpi_plugin_opmanager_alarms`, `glpi_plugin_opmanager_deviceexceptions`, `glpi_plugin_opmanager_devices`, `glpi_plugin_opmanager_hygieneitems`, `glpi_plugin_opmanager_hygienetickets`, `glpi_plugin_opmanager_outbox`, `glpi_plugin_opmanager_storms`, `glpi_plugin_opmanager_ticketrequests`.
+
+Uninstall removes these tables, with the plugin's rights, automatic actions and settings.
+
+## Security
+
+- Every form uses GLPI's CSRF token, and every page checks the plugin's rights and the user's entities.
+- Secrets such as API keys are stored with GLPI's secured configuration, sent once and never shown again.
+- Calls to outside services run only from automatic actions or an explicit button, with a timeout.
+- Report a vulnerability privately as described in [SECURITY.md](SECURITY.md).
+
+## Development
+
+- Offline tests: `php tests/run_all.php`
+- Release check: `python tools/release_check.py`
+- Rules for contributors: [CHARTER.md](CHARTER.md) and [AGENTS.md](AGENTS.md).
+- Changes: [CHANGELOG.md](CHANGELOG.md).
+
+## Licence
+
+GPL-3.0-or-later, author Teguh DHAMAR. See [LICENSE](LICENSE) and [NOTICE](NOTICE). To cite this plugin, see
+[CITATION.cff](CITATION.cff).
