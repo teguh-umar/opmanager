@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you reuse this software, please cite it as below."
+title: "OpManager"
+type: software
+abstract: "Connects ManageEngine OpManager to GLPI: device inventory sync, asset matching, alarms and tickets. Deprecated, replaced by NMS Integration."
+authors:
+  - given-names: Teguh
+    family-names: DHAMAR
+repository-code: "https://github.com/teguh-umar/opmanager"
+license: GPL-3.0-or-later
+version: "1.3.3"
+date-released: "2026-11-22"
+keywords:
+  - glpi
+  - glpi-plugin
+  - opmanager
+  - monitoring

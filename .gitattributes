@@ -7,3 +7,10 @@ docs/manual.md -export-ignore
 tools/release_check.py export-ignore
 .gitignore export-ignore
 .gitattributes export-ignore
+
+# Suite governance files (CHARTER.md): kept in the repository, not shipped in the plugin zip.
+# LICENSE and NOTICE stay in the zip.
+AGENTS.md export-ignore
+CHARTER.md export-ignore -text
+CITATION.cff export-ignore
+SECURITY.md export-ignore -text
