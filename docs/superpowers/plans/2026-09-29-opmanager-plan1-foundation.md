@@ -191,8 +191,8 @@ Expected: `FAIL lib/pgnsuite/ConfigTab.php is canonical -- got missing` (twice),
 
 ```bash
 mkdir -p lib/pgnsuite
-cp "/c/Users/teguh.umar/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/ConfigTab.php" lib/pgnsuite/ConfigTab.php
-cp "/c/Users/teguh.umar/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/AssetTab.php"  lib/pgnsuite/AssetTab.php
+cp "/c/Users/<user>/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/ConfigTab.php" lib/pgnsuite/ConfigTab.php
+cp "/c/Users/<user>/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/AssetTab.php"  lib/pgnsuite/AssetTab.php
 ```
 
 `.gitattributes` (replace the whole file):
