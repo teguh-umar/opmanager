@@ -1,6 +1,6 @@
 {
     "name": "pgn-ict/opmanager",
-    "description": "ManageEngine OpManager integration for GLPI 11 (PGN GLPI Suite)",
+    "description": "ManageEngine OpManager integration for GLPI 11 (GLPI plugin suite)",
     "type": "glpi-plugin",
     "license": "GPL-3.0-or-later",
     "autoload": {

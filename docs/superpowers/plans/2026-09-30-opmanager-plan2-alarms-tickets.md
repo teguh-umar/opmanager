@@ -34,8 +34,8 @@ The GLPI-touching adapters (`DbAlarmStore`, `GlpiTicketGateway`, `DbDeviceIndex`
 - API key: header `apiKey` only (deprecated as a query parameter since OpManager 12.8.100; `listAlarms` is header-only).
 - No pager in the asset-tab section; the "Showing N of M" line stays visible; no count badges.
 - Offline tests: `C:/php/php.exe tests/run_all.php`. Every regression test is seen to fail first. Count results with `^PASS`.
-- Release: tag locally, push only on a major version; lib SHAs are checked inside the zip; install into `C:/Users/teguh.umar/Downloads/glpi/plugins/opmanager/`.
-- Never read `C:/Users/teguh.umar/Downloads/glpi/config/` or `files/`.
+- Release: tag locally, push only on a major version; lib SHAs are checked inside the zip; install into `C:/Users/<user>/Downloads/glpi/plugins/opmanager/`.
+- Never read `C:/Users/<user>/Downloads/glpi/config/` or `files/`.
 
 ## Review Focus
 
@@ -107,7 +107,7 @@ use GlpiPlugin\Opmanager\OpManager\ClientException;
 $row = [
     'severity' => "<img src='/images/devices/status3.gif'>&nbsp;Attention",
     'numericSeverity' => 3, 'deviceType' => '-', 'severityString' => 'Attention', 'statusStr' => 'Attention',
-    'displayName' => 'VM-APP-DB01', 'ipAddress' => '10.20.14.139', 'eventType' => 'Threshold Down',
+    'displayName' => 'VM-SERVER-03', 'ipAddress' => '10.20.14.139', 'eventType' => 'Threshold Down',
     'message' => 'CPU Utilization is 85 %, threshold value for this monitor is 80 %',
     'deviceName' => '10.20.3.139.10000000001', 'statusNum' => 3, 'modTimeLong' => 1790739714008,
     'modTime' => '30 Sep 2026 10:41:54 AM ICT', 'alarmId' => '10000003244', 'category' => 'Server',
@@ -117,7 +117,7 @@ $rows = AlarmParser::parse(json_encode([$row, ['alarmId' => '', 'numericSeverity
 check('rows without alarmId or valid severity are skipped', count($rows) === 1);
 $a = $rows[0];
 check('keys mapped', $a['alarm_key'] === '10000003244' && $a['entity_key'] === '10000024830'
-    && $a['device_name'] === '10.20.3.139.10000000001' && $a['display_name'] === 'VM-APP-DB01'
+    && $a['device_name'] === '10.20.3.139.10000000001' && $a['display_name'] === 'VM-SERVER-03'
     && $a['ip_address'] === '10.20.14.139' && $a['alarm_code'] === 'THRESHOLD-DOWN_VMware-vmCPUUtilization');
 check('numeric severity used', $a['severity'] === 3 && $a['severity_label'] === 'Attention');
 check('HTML severity field never copied', !str_contains(json_encode($a), '<img'));
@@ -790,7 +790,7 @@ check('network step can be switched off', EntityResolver::resolve(null, '10.20.1
 check('bad IP → default', EntityResolver::resolve(null, 'not-an-ip', $nets, true, 1) === 1);
 
 $alarm = [
-    'alarm_key' => '10000003244', 'entity_key' => 'E', 'device_name' => '10.20.3.139.10000000001', 'display_name' => 'VM-APP-DB01',
+    'alarm_key' => '10000003244', 'entity_key' => 'E', 'device_name' => '10.20.3.139.10000000001', 'display_name' => 'VM-SERVER-03',
     'ip_address' => '10.20.14.139', 'category' => 'Server', 'alarm_code' => 'THRESHOLD-DOWN_VMware-vmCPUUtilization',
     'event_type' => 'Threshold Down', 'severity' => 1, 'severity_label' => 'Critical',
     'message' => 'CPU <b>85</b> %', 'mod_time' => '2026-09-30 10:41:54',
@@ -799,8 +799,8 @@ $cfg = ['title_pattern' => '[OPM-{alarm_key}] {severity}: {message} - {device}',
 $asset = ['itemtype' => 'Computer', 'items_id' => 1529];
 
 $in = TicketBuilder::build($alarm, $asset, 7, [], 3, $cfg);
-check('title from pattern', $in['name'] === '[OPM-10000003244] Critical: CPU <b>85</b> % - VM-APP-DB01');
-check('content escaped and line breaks kept', $in['content'] === "Device: VM-APP-DB01<br />\nCPU &lt;b&gt;85&lt;/b&gt; %");
+check('title from pattern', $in['name'] === '[OPM-10000003244] Critical: CPU <b>85</b> % - VM-SERVER-03');
+check('content escaped and line breaks kept', $in['content'] === "Device: VM-SERVER-03<br />\nCPU &lt;b&gt;85&lt;/b&gt; %");
 check('entity set', $in['entities_id'] === 7);
 check('incident by default', $in['type'] === TicketBuilder::TYPE_INCIDENT);
 check('urgency from severity when template has none', $in['urgency'] === 5);
@@ -1003,7 +1003,7 @@ final class FakeIndex implements DeviceIndex
 }
 final class FakeLookup implements AssetLookup
 {
-    public function byName(string $name): array { return $name === 'VM-APP-DB01' ? [['itemtype' => 'Computer', 'items_id' => 77]] : []; }
+    public function byName(string $name): array { return $name === 'VM-SERVER-03' ? [['itemtype' => 'Computer', 'items_id' => 77]] : []; }
     public function byIp(string $ip): array { return []; }
 }
 
@@ -1015,9 +1015,9 @@ $r = new AlarmAssetResolver($index, new Matcher(new FakeLookup()), 'hybrid_name'
 $alarm = static fn (string $dev, string $disp, string $ip) => ['device_name' => $dev, 'display_name' => $disp, 'ip_address' => $ip];
 
 check('matched device row wins', $r->resolve($alarm('core-sw', 'x', '1.1.1.1')) === ['devices_id' => 5, 'itemtype' => 'NetworkEquipment', 'items_id' => 10]);
-check('alarm device not in list falls back to matcher', $r->resolve($alarm('10.20.3.139.10000000001', 'VM-APP-DB01', '10.20.14.139'))
+check('alarm device not in list falls back to matcher', $r->resolve($alarm('10.20.3.139.10000000001', 'VM-SERVER-03', '10.20.14.139'))
     === ['devices_id' => 0, 'itemtype' => 'Computer', 'items_id' => 77]);
-check('unmatched device row still tries the matcher, keeps device id', $r->resolve($alarm('lonely', 'VM-APP-DB01', ''))
+check('unmatched device row still tries the matcher, keeps device id', $r->resolve($alarm('lonely', 'VM-SERVER-03', ''))
     === ['devices_id' => 6, 'itemtype' => 'Computer', 'items_id' => 77]);
 check('nothing found → no asset', $r->resolve($alarm('ghost', 'ghost', '')) === ['devices_id' => 0, 'itemtype' => '', 'items_id' => 0]);
 
@@ -2952,22 +2952,22 @@ Tick a box only with the evidence named on it. Paste outputs back to the session
 ## 2. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.2.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.2.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] `DeviceSync` still works after the header-auth change:
-      `sudo -u nginx php /data/www/glpi/front/cron.php DeviceSync` → "Last successful device sync" updates.
-- [ ] Setup > PGN Suite > OpManager > "Tickets from alarms": service user, template and default
+      `sudo -u nginx php /var/www/glpi/front/cron.php DeviceSync` → "Last successful device sync" updates.
+- [ ] Setup > ICT Tools > OpManager > "Tickets from alarms": service user, template and default
       entity set, and **only Critical** ticked. Save; then selfcheck prints `ALL PASS`
       (including `tickets/service-user` and `tickets/template-resolves`).
 
 ## 3. First alarm sync
 
 ```bash
-sudo -u nginx php /data/www/glpi/front/cron.php AlarmSync
-sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
+sudo -u nginx php /var/www/glpi/front/cron.php AlarmSync
+sudo tail -n 20 /var/www/glpi/files/_log/opmanager.log
 ```
 
 - [ ] Automatic action log shows `fetched N, created …`. N should be about the number of active
@@ -3011,14 +3011,14 @@ git commit -m "chore: release 0.2.0 (alarm polling + tickets)
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git tag 0.2.0
 git archive --format=zip --prefix=opmanager/ -o opmanagerv0.2.0.zip 0.2.0
-python tools/release_check.py opmanagerv0.2.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+python tools/release_check.py opmanagerv0.2.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 ```
 
 Expected: `RELEASE OK`, and the installed file count equals the entries count. Do not push; 0.2.0 is a minor version.
 
 - [ ] **Step 5: Hub**
 
-In `…/PGN GLPI Suite/_pgn-glpi-suite.md`:
+In `…/GLPI plugin suite/_pgn-glpi-suite.md`:
 - update §2 row 7 status to "v0.2.0 built (tag, zip SHA), not deployed";
 - append a §7 entry: opmanager now creates Tickets from alarms. It is the first suite plugin to do so, and it uses core `->add()` only. It adds followups with `_no_reopen`, reopens via `add_reopen`, and suppresses `glpiset_followup_tech` around its followups;
 - bump "Last updated".

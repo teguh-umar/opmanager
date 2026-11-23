@@ -3,7 +3,7 @@
 namespace GlpiPlugin\Opmanager;
 
 /**
- * OpManager's section in the shared "PGN Suite" tab on Setup > General (hub §5).
+ * OpManager's section in the shared "ICT Tools" tab on Setup > General (hub §5).
  * The same form renders on front/config.php for admins without core `config` READ.
  * Layout (D29): a status strip, then one tab per area; one form, one Save button, and
  * field names unchanged so front/config.php needs no change.
@@ -12,7 +12,7 @@ final class SuiteConfig
 {
     public const SECTION = 'opmanager';
 
-    /** Hidden field marking a POST that came from the PGN Suite tab. */
+    /** Hidden field marking a POST that came from the ICT Tools tab. */
     public const FROM_SUITE_FIELD = '_from_pgnsuite';
 
     /** Session key holding a freshly generated webhook token until the form shows it once. */

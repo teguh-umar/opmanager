@@ -60,7 +60,7 @@ check('addNote key only in header', ($posted[0][2]['apiKey'] ?? null) === 'S3CRE
 $writer->clearAlarm('IF-1.2_Poll');
 check('clearAlarm posts entity', $posted[1][0] === 'https://opm/api/json/alarm/clearAlarm' && $posted[1][3] === ['entity' => 'IF-1.2_Poll']);
 // Real clearAlarm success shape (production probe 2026-10-01): no "result", no "error".
-$cleared = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{"Details":{"displayName":"VM-APP-02"}}}']);
+$cleared = new Client('https://opm', 'S3CRET', true, fn () => ['status' => 200, 'body' => '{"ackMessage":"Alarm has been successfully Cleared!","AlarmProperty":{"Details":{"displayName":"VM-SERVER-01"}}}']);
 $ok = true;
 try { $cleared->clearAlarm('E'); } catch (ClientException $e) { $ok = false; }
 check('clearAlarm ackMessage answer is success', $ok);
@@ -1071,6 +1071,6 @@ In `setup.php`, set `define('PLUGIN_OPMANAGER_VERSION', '0.4.0');`. Add a `## 0.
 
 - [ ] **Step 4: Full suite, build, verify**
 
-Run: `C:/php/php.exe tests/run_all.php` → expected `SUITES OK`. Commit with `chore: release 0.4.0 (GLPI to OpManager notes and clear)`. Build with `git archive --format=zip --prefix=opmanager/ -o opmanagerv0.4.0.zip HEAD` and run `python tools/release_check.py opmanagerv0.4.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins` → expected `RELEASE OK`.
+Run: `C:/php/php.exe tests/run_all.php` → expected `SUITES OK`. Commit with `chore: release 0.4.0 (GLPI to OpManager notes and clear)`. Build with `git archive --format=zip --prefix=opmanager/ -o opmanagerv0.4.0.zip HEAD` and run `python tools/release_check.py opmanagerv0.4.0.zip --install C:/Users/<user>/Downloads/glpi/plugins` → expected `RELEASE OK`.
 
 - [ ] **Step 5: Hub** — §2 row 7: "v0.4.0 built, not deployed (GLPI → OpManager notes/clear, human actions only)".

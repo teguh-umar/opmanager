@@ -100,15 +100,15 @@ Same code as 1.3.0-rc7, which passed the production check on 2026-11-10. The rc 
 
 ## 1.2.0
 
-- OpManager moved into the shared sidebar menu **ICT Tools** (one menu for all PGN plugins,
+- OpManager moved into the shared sidebar menu **ICT Tools** (one menu for all suite plugins,
   one entry per plugin). The own top-level "OpManager" menu is gone. Devices, Alarms and
   Coverage are now tabs at the top of each OpManager page.
 - The menu label can be changed in Setup > General > suite tab > General (default "ICT Tools").
 - Plugin author is now "ICT".
 - Ships the shared suite files Menu r1, ConfigTab r4 and AssetTab r2.
 - Log in again after the upgrade: GLPI keeps the menu in the session.
-- While other PGN plugins are not yet upgraded, they keep their own menus, and the Setup tab
-  may still be called "PGN Suite" (the first plugin loaded supplies the tab).
+- While other suite plugins are not yet upgraded, they keep their own menus, and the Setup tab
+  may still be called "ICT Tools" (the first plugin loaded supplies the tab).
 
 ## 1.1.0
 
@@ -154,7 +154,7 @@ Same code as 1.3.0-rc7, which passed the production check on 2026-11-10. The rc 
 ## 1.0.0
 
 First major release. It contains no new features; it is the production-verified state of 0.6.0
-on VM-GLPI-01 (user, 2026-10-02):
+on VM-SERVER-18 (user, 2026-10-02):
 - OpManager device sync and matching to GLPI assets, with a Monitoring section on the assets;
 - tickets from Critical alarms on production IP ranges, with an alarm filter;
 - an OpManager webhook receiver;
@@ -278,6 +278,6 @@ A `/code-review low` pass over the whole history (`d4b7871..0.6.0`) reported no 
   existing GLPI assets (Computer, NetworkEquipment, custom assets). Five match modes;
   manual pins always win; a name or IP owned by more than one asset goes to "Needs review".
 - OpManager sidebar sector with the device list and manual pin/unpin.
-- "Monitoring" section in the shared PGN Suite asset tab.
-- Setup in Setup > General > PGN Suite > OpManager; API key encrypted at rest.
+- "Monitoring" section in the shared ICT Tools asset tab.
+- Setup in Setup > General > ICT Tools > OpManager; API key encrypted at rest.
 - Alarms and tickets are NOT in this release (Plan 2).

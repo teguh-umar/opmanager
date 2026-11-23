@@ -169,7 +169,7 @@ Aturan anti-banjir (usulan Claude, disetujui user):
   `hygiene_glpi_groups` (SysAdmin, ITOC) dan `hygiene_glpi_users`, observer `hygiene_nms_group`.
   Isinya dibagi per domain, sama seperti tiket NMS di bawah.
 - **Tiket NMS dibagi per domain (rc3, keputusan user 2026-11-09, "Opsi A").** Tim NMS adalah
-  grup bersama tim server (DCOC: server, VM, storage) dan tim network (ITOC). Tiketnya tetap
+  grup bersama tim server (ICT: server, VM, storage) dan tim network (ITOC). Tiketnya tetap
   satu dan di-assign ke `hygiene_nms_group`. Di setiap bagian (dead / unknown) ada sub-bagian
   "Server, VM and storage", "Network" dan "Unknown category". Domain ditentukan dari kategori
   OpManager (`Report::domain()`). Bila kategori tidak dikenal, domain diambil dari itemtype aset
@@ -215,7 +215,7 @@ Aturan anti-banjir (usulan Claude, disetujui user):
   difilter dan disimpan sebagai saved search.
 - **Form Device:** blok "Kebersihan NMS" berisi kondisi, cek hidup + detail + waktu,
   pengecualian dan riwayatnya, serta tiket kebersihan terbuka yang memuat perangkat ini.
-- **Setup** (section di tab PGN Suite config, aturan suite): subsection "Kebersihan NMS" untuk
+- **Setup** (section di tab ICT Tools config, aturan suite): subsection "Kebersihan NMS" untuk
   semua config key §8, plus status run terakhir (`last_hygiene_run`, `last_hygiene_error`)
   dan ringkasan jumlah per kondisi.
 - Tidak ada menu atau halaman baru. *(usulan)*

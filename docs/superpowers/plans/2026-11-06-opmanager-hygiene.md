@@ -6,7 +6,7 @@
 
 **Architecture:** New namespace `GlpiPlugin\Opmanager\Hygiene\`. Pure classes hold the decisions: `Classifier`, `Liveness`, `Cidr`, `TicketPlanner`, `Report`. Thin DB/GLPI adapters sit behind interfaces: `HygieneStore`, `EvidenceSource`, `Prober`, `HygieneGateway`. An orchestrator, `HygieneRun`, drives them and is tested with fakes, as `AlarmSync` is. A new daily CLI cron `HygieneCheck` runs it.
 
-**Tech Stack:** PHP 8.2, GLPI 11.0.5 core objects. Offline harness `tests/*_test.php` (`check()` / `done()`), run with `C:/Users/teguh.umar/Downloads/php/php.exe tests/run_all.php`.
+**Tech Stack:** PHP 8.2, GLPI 11.0.5 core objects. Offline harness `tests/*_test.php` (`check()` / `done()`), run with `C:/Users/<user>/Downloads/php/php.exe tests/run_all.php`.
 
 **Spec:** `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md` (D34). Section numbers below (§n) refer to it.
 
@@ -419,5 +419,5 @@
 
 - [ ] **Step 1: Update** the version, the CHANGELOG (user-facing bullets, in the style of 1.1.0) and the runbook.
 - [ ] **Step 2: Full suite.** Run `php tests/run_all.php` and confirm `SUITES OK`. Run `graphify update .`.
-- [ ] **Step 3: Commit.** Use `chore: release 1.3.0-rc1 (D34 NMS hygiene)`. Tagging, zipping (`git archive --prefix=opmanager/ -o opmanagerv1.3.0-rc1.zip 1.3.0-rc1`), `python tools/release_check.py opmanagerv1.3.0-rc1.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins`, and pushing happen **only after the user says OK** (memory: push/release by Claude after user OK).
+- [ ] **Step 3: Commit.** Use `chore: release 1.3.0-rc1 (D34 NMS hygiene)`. Tagging, zipping (`git archive --prefix=opmanager/ -o opmanagerv1.3.0-rc1.zip 1.3.0-rc1`), `python tools/release_check.py opmanagerv1.3.0-rc1.zip --install C:/Users/<user>/Downloads/glpi/plugins`, and pushing happen **only after the user says OK** (memory: push/release by Claude after user OK).
 - [ ] **Step 4: Report to the orchestrator.** Send the spec path, the rc zip name and spec §8 (tables, columns, right, config keys, cron) so that `nms` can carry it.

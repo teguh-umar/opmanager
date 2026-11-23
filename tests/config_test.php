@@ -123,7 +123,7 @@ check('broken stored filter decodes to off', Config::filterSettings('x', 'not js
 check('default description carries the OpManager category line', str_contains(Config::DEFAULT_CONTENT_PATTERN, "Category: {category}\n"));
 check('old default still known for the upgrade', Config::PREVIOUS_CONTENT_PATTERNS !== [] && !in_array(Config::DEFAULT_CONTENT_PATTERN, Config::PREVIOUS_CONTENT_PATTERNS, true));
 check('upgrade replaces an untouched old default', Config::upgradedContentPattern(Config::PREVIOUS_CONTENT_PATTERNS[0]) === Config::DEFAULT_CONTENT_PATTERN);
-check('upgrade keeps a customised pattern', Config::upgradedContentPattern("Dear Rekan PGN\n{message}") === null);
+check('upgrade keeps a customised pattern', Config::upgradedContentPattern("Dear Rekan ORG\n{message}") === null);
 check('installer runs the pattern upgrade', str_contains((string) file_get_contents(OPM_ROOT . '/install/install.php'), 'Config::upgradedContentPattern('));
 
 // v0.3.0: a textarea posts \r\n; stored patterns and the upgrade compare must not care.

@@ -11,7 +11,7 @@ Spec: `docs/superpowers/specs/2026-11-06-opmanager-unmanaged-hygiene-design.md`.
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0.zip && sudo -u nginx php /data/www/glpi/bin/console glpi:plugin:install opmanager --force && sudo -u nginx php /data/www/glpi/bin/console glpi:plugin:activate opmanager && sudo -u nginx php /data/www/glpi/bin/console glpi:cache:clear && sudo systemctl reload php-fpm && sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) && sudo -u nginx unzip -q /tmp/opmanagerv1.3.0.zip && sudo -u nginx php /var/www/glpi/bin/console glpi:plugin:install opmanager --force && sudo -u nginx php /var/www/glpi/bin/console glpi:plugin:activate opmanager && sudo -u nginx php /var/www/glpi/bin/console glpi:cache:clear && sudo systemctl reload php-fpm && sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - The old folder goes to `/tmp` as a backup, never inside `plugins/` (GLPI would read it as another plugin). Rollback: move it back and run `plugin:install --force` and `plugin:activate` again.
@@ -46,7 +46,7 @@ cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) &&
 
 ## 4. First week: review only
 
-- [x] Run once by hand: `sudo -u nginx php /data/www/glpi/front/cron.php --force HygieneCheck`. The status badge "NMS hygiene" shows `tickets off` (yellow). No error.
+- [x] Run once by hand: `sudo -u nginx php /var/www/glpi/front/cron.php --force HygieneCheck`. The status badge "NMS hygiene" shows `tickets off` (yellow). No error.
 - [x] OpManager > Devices: add the columns **Hygiene condition**, **Liveness** and **Liveness evidence**.
 - [x] Filter **Hygiene condition = Unmanaged, dead**. Each row's evidence is plausible (agent silent for weeks, Mist disconnected, TCP no answer).
 - [x] Filter **Unmanaged, still alive**. Unmanaged devices that are still in GLPI appear here if their agent still reports.
@@ -56,7 +56,7 @@ cd /data/www/glpi/plugins && sudo mv opmanager /tmp/opmanager.bak-$(date +%F) &&
 ## 5. Turn tickets on
 
 - [x] Only when re-testing after an earlier rc created tickets: put both old hygiene tickets in the trash, then reset the weekly gate so the next run creates new ones:
-  `sudo -u nginx php /data/www/glpi/bin/console config:set --context=plugin:opmanager last_hygiene_ticket_run ""`
+  `sudo -u nginx php /var/www/glpi/bin/console config:set --context=plugin:opmanager last_hygiene_ticket_run ""`
 - [x] Setup > NMS hygiene: tick **Create hygiene tickets** and Save.
 - [ ] The first run after enabling creates the tickets at once (no ticket run was recorded while they were off).
 - [x] Run `front/cron.php --force HygieneCheck`. Two Request tickets appear:

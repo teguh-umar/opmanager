@@ -18,7 +18,7 @@
 - `ticket_source` default `webhook`, also on upgrade (`Config::setDefaults()` adds missing keys only).
 - Mode `rules` = v1.0.2 behaviour; every existing test must pass unchanged.
 - Release 1.1.0 is a minor: commit + tag locally only, no push, no GitHub Release (hub §0 rule 6).
-- Every production zip is also installed into `C:/Users/teguh.umar/Downloads/glpi/plugins/opmanager/` via `tools/release_check.py --install`.
+- Every production zip is also installed into `C:/Users/<user>/Downloads/glpi/plugins/opmanager/` via `tools/release_check.py --install`.
 - Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
 ## Review Focus
@@ -753,6 +753,6 @@ git add setup.php CHANGELOG.md docs/superpowers/specs/2026-09-29-opmanager-desig
 git commit -m "chore: release 1.1.0 (ticket source = OpManager webhook criteria, D32)"
 git tag 1.1.0
 git archive --prefix=opmanager/ -o opmanagerv1.1.0.zip 1.1.0
-python tools/release_check.py opmanagerv1.1.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+python tools/release_check.py opmanagerv1.1.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 ```
 Expected: `RELEASE OK`, `setup.php version: 1.1.0`. No push (minor release).

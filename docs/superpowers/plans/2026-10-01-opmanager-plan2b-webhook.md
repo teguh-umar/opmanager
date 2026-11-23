@@ -778,13 +778,13 @@ status: active
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.3.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.3.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
 ```
 
-- [ ] Setup > PGN Suite > OpManager > "Webhook from OpManager": click **Generate new token**,
+- [ ] Setup > ICT Tools > OpManager > "Webhook from OpManager": click **Generate new token**,
       and copy the token from the message (it is shown once).
-- [ ] `sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
+- [ ] `sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
       (including `webhook/stateless`, `webhook/token`, `webhook/lock`).
 
 ## 2. Endpoint checks from the VM
@@ -832,7 +832,7 @@ git commit -m "chore: release 0.3.0 (webhook receiver)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git archive --format=zip --prefix=opmanager/ -o opmanagerv0.3.0.zip HEAD
-python tools/release_check.py opmanagerv0.3.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+python tools/release_check.py opmanagerv0.3.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 ```
 
 Expected: `RELEASE OK`. The tag `0.3.0` is created after the final review and merge (local only, hub §0 rule 6).

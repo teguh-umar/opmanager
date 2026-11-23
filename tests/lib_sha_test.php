@@ -2,8 +2,8 @@
 
 require __DIR__ . '/bootstrap.php';
 
-// The shared PGN Suite classes must be byte-identical to the canonical copies
-// in …/PGN GLPI Suite/shared/pgnsuite/ (hub §5). No line-ending normalisation
+// The shared ICT Tools classes must be byte-identical to the canonical copies
+// in …/GLPI plugin suite/shared/pgnsuite/ (hub §5). No line-ending normalisation
 // here on purpose: the file itself must be exact.
 $expected = [
     'lib/pgnsuite/ConfigTab.php' => 'F94A80C1C813A951919A20D2521DE35B431F9C836BBCCE89BAC70E544D0B80FA',

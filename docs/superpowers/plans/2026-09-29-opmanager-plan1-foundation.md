@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship `opmanager` v0.1.0. It installs cleanly on GLPI 11.0.5, syncs the OpManager device list, matches each device to an existing GLPI asset (it never writes to assets), lets an admin pin devices manually, and shows a "Monitoring" section in the shared PGN Suite asset tab.
+**Goal:** Ship `opmanager` v0.1.0. It installs cleanly on GLPI 11.0.5, syncs the OpManager device list, matches each device to an existing GLPI asset (it never writes to assets), lets an admin pin devices manually, and shows a "Monitoring" section in the shared ICT Tools asset tab.
 
-**Architecture:** This is a PSR-4 GLPI plugin (`GlpiPlugin\Opmanager\` → `src/`). The decision logic lives in pure classes that the offline tests exercise: `Config::sanitize`, `RightSeeder`, `Matcher`, `DeviceParser`, `DeviceSync`, `AssetSections::viewModel/html`. Thin adapters touch GLPI: `DbAssetLookup`, `DbDeviceStore`, `Cron`, front controllers. The adapters are covered by `tools/selfcheck.php` on the VM. Setup UI goes in the shared PGN Suite config tab (`lib/pgnsuite/ConfigTab.php` r3). The monitoring view is a section of the shared PGN Suite asset tab (`lib/pgnsuite/AssetTab.php` r1).
+**Architecture:** This is a PSR-4 GLPI plugin (`GlpiPlugin\Opmanager\` → `src/`). The decision logic lives in pure classes that the offline tests exercise: `Config::sanitize`, `RightSeeder`, `Matcher`, `DeviceParser`, `DeviceSync`, `AssetSections::viewModel/html`. Thin adapters touch GLPI: `DbAssetLookup`, `DbDeviceStore`, `Cron`, front controllers. The adapters are covered by `tools/selfcheck.php` on the VM. Setup UI goes in the shared ICT Tools config tab (`lib/pgnsuite/ConfigTab.php` r3). The monitoring view is a section of the shared ICT Tools asset tab (`lib/pgnsuite/AssetTab.php` r1).
 
 **Tech Stack:** PHP 8.2+ (local CLI is PHP 8.4 without mbstring, and has no GLPI runtime), GLPI 11.0.5 core APIs, Guzzle (bundled in GLPI `vendor/`), Python 3 for the release checker.
 
@@ -25,7 +25,7 @@
 - Entity restriction applies only to display. Cron and sync never scope by entity.
 - API key is secured via `$PLUGIN_HOOKS['secured_configs']['opmanager'] = ['opm_api_key']`. Core encrypts it on write; the plugin decrypts it with `(new GLPIKey())->decrypt()`. The key never appears in HTML, logs or exception messages.
 - Cron tasks are registered in `CronTask::MODE_EXTERNAL` (CLI).
-- Do not read, grep or copy `C:/Users/teguh.umar/Downloads/glpi/config/` or `…/files/`. Only `src/`, `inc/`, `templates/`, `plugins/`, `vendor/` may be read.
+- Do not read, grep or copy `C:/Users/<user>/Downloads/glpi/config/` or `…/files/`. Only `src/`, `inc/`, `templates/`, `plugins/`, `vendor/` may be read.
 - Tag every version locally; push to GitHub only on a major version.
 - Local PHP: `C:/php/php.exe` (no mbstring → do not use `mb_*` in code the offline tests load).
 
@@ -52,7 +52,7 @@
 | `src/RightDefinition.php` | Right names and masks |
 | `src/RightSeeder.php` | Pure rights-seeding plan |
 | `src/Profile.php` | Rights tab on Administration → Profiles |
-| `src/SuiteConfig.php` | Section in the PGN Suite config tab + the form |
+| `src/SuiteConfig.php` | Section in the ICT Tools config tab + the form |
 | `src/Matching/AssetLookup.php` | Lookup interface |
 | `src/Matching/Matcher.php` | Pure matching algorithm |
 | `src/Matching/DbAssetLookup.php` | GLPI DB lookup by name / IP |
@@ -75,7 +75,7 @@
 
 **Files:**
 - Create: `setup.php`, `composer.json`, `.gitignore`, `lib/pgnsuite/ConfigTab.php`, `lib/pgnsuite/AssetTab.php`, `tests/bootstrap.php`, `tests/run_all.php`, `tests/lib_sha_test.php`
-- Modify: `.gitattributes`, hub `…/PGN GLPI Suite/_pgn-glpi-suite.md` (§2 claim table, §7)
+- Modify: `.gitattributes`, hub `…/GLPI plugin suite/_pgn-glpi-suite.md` (§2 claim table, §7)
 
 **Interfaces:**
 - Produces: `tests/bootstrap.php` with `check(string $label, bool $ok, string $detail = ''): void`, `done(): void`, constant `OPM_ROOT`, stubs `__`, `__s`, `_n`, `_sx`, `htmlescape`, constants `READ=1 UPDATE=2 CREATE=4 DELETE=8 PURGE=16`.
@@ -166,8 +166,8 @@ exit($failed === 0 ? 0 : 1);
 
 require __DIR__ . '/bootstrap.php';
 
-// The shared PGN Suite classes must be byte-identical to the canonical copies
-// in …/PGN GLPI Suite/shared/pgnsuite/ (hub §5). No line-ending normalisation
+// The shared ICT Tools classes must be byte-identical to the canonical copies
+// in …/GLPI plugin suite/shared/pgnsuite/ (hub §5). No line-ending normalisation
 // here on purpose: the file itself must be exact.
 $expected = [
     'lib/pgnsuite/ConfigTab.php' => '008C4C817DB2E42040915136108CD41917C34760A8F4CDDC60E46BDB208F39D0',
@@ -191,8 +191,8 @@ Expected: `FAIL lib/pgnsuite/ConfigTab.php is canonical -- got missing` (twice),
 
 ```bash
 mkdir -p lib/pgnsuite
-cp "/c/Users/teguh.umar/OneDrive/Documents/PGN GLPI Suite/shared/pgnsuite/ConfigTab.php" lib/pgnsuite/ConfigTab.php
-cp "/c/Users/teguh.umar/OneDrive/Documents/PGN GLPI Suite/shared/pgnsuite/AssetTab.php"  lib/pgnsuite/AssetTab.php
+cp "/c/Users/teguh.umar/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/ConfigTab.php" lib/pgnsuite/ConfigTab.php
+cp "/c/Users/teguh.umar/OneDrive/Documents/GLPI plugin suite/shared/pgnsuite/AssetTab.php"  lib/pgnsuite/AssetTab.php
 ```
 
 `.gitattributes` (replace the whole file):
@@ -220,7 +220,7 @@ review_integrasi.md
 ```json
 {
     "name": "pgn-ict/opmanager",
-    "description": "ManageEngine OpManager integration for GLPI 11 (PGN GLPI Suite)",
+    "description": "ManageEngine OpManager integration for GLPI 11 (GLPI plugin suite)",
     "type": "glpi-plugin",
     "license": "GPL-3.0-or-later",
     "autoload": {
@@ -237,9 +237,9 @@ review_integrasi.md
 <?php
 
 /**
- * OpManager - ManageEngine OpManager <-> GLPI 11 integration (PGN GLPI Suite plugin #7)
+ * OpManager - ManageEngine OpManager <-> GLPI 11 integration (GLPI plugin suite plugin #7)
  *
- * @author  PGN ICT
+ * @author  ICT
  * @license GPL-3.0-or-later
  */
 
@@ -252,7 +252,7 @@ function plugin_version_opmanager()
     return [
         'name'         => 'OpManager',
         'version'      => PLUGIN_OPMANAGER_VERSION,
-        'author'       => 'PGN ICT',
+        'author'       => 'ICT',
         'license'      => 'GPL-3.0-or-later',
         'homepage'     => '',
         'requirements' => [
@@ -291,9 +291,9 @@ Expected: `ALL PASS (2 passed, 0 failed)` and `No syntax errors detected in setu
 
 - [ ] **Step 5: Claim the second right and the menu sector in the hub**
 
-In `…/PGN GLPI Suite/_pgn-glpi-suite.md`, in the §2 claim table's `opmanager` column:
+In `…/GLPI plugin suite/_pgn-glpi-suite.md`, in the §2 claim table's `opmanager` column:
 - Profile rights row: replace `further \`plugin_opmanager_*\` names TBD at design` with `\`plugin_opmanager_monitoring\` (READ) — claimed <today>`.
-- Menu node row: replace the cell with `own top-level sector \`opmanager\` (entry \`device\`; no Setup entry — settings in PGN Suite tab)`.
+- Menu node row: replace the cell with `own top-level sector \`opmanager\` (entry \`device\`; no Setup entry — settings in ICT Tools tab)`.
 
 Append a dated §7 entry (newest first) recording both claims. Bump the header "Last updated" line with your session name.
 
@@ -301,7 +301,7 @@ Append a dated §7 entry (newest first) recording both claims. Bump the header "
 
 ```bash
 git add .gitattributes .gitignore composer.json setup.php lib tests
-git commit -m "feat: scaffold opmanager plugin with canonical PGN Suite classes
+git commit -m "feat: scaffold opmanager plugin with canonical ICT Tools classes
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1055,14 +1055,14 @@ Expected: fatal on the missing `src/SuiteConfig.php`.
 namespace GlpiPlugin\Opmanager;
 
 /**
- * OpManager's section in the shared "PGN Suite" tab on Setup > General (hub §5).
+ * OpManager's section in the shared "ICT Tools" tab on Setup > General (hub §5).
  * The same form renders on front/config.php for admins without core `config` READ.
  */
 final class SuiteConfig
 {
     public const SECTION = 'opmanager';
 
-    /** Hidden field marking a POST that came from the PGN Suite tab. */
+    /** Hidden field marking a POST that came from the ICT Tools tab. */
     public const FROM_SUITE_FIELD = '_from_pgnsuite';
 
     public static function section(): ?array
@@ -1274,7 +1274,7 @@ if (isset($_POST['update'])) {
     Html::back();
 }
 
-// Users who can open Setup > General get the PGN Suite tab instead (hub §5).
+// Users who can open Setup > General get the ICT Tools tab instead (hub §5).
 if (Session::haveRight('config', READ)) {
     Html::redirect(ConfigTab::getReturnUrl(SuiteConfig::SECTION));
 }
@@ -1301,7 +1301,7 @@ function plugin_init_opmanager()
 
     \Plugin::registerClass(\GlpiPlugin\Opmanager\Profile::class, ['addtabon' => ['Profile']]);
 
-    // Shared "PGN Suite" tab on Setup > General (hub §5). class_exists(..., false)
+    // Shared "ICT Tools" tab on Setup > General (hub §5). class_exists(..., false)
     // skips the autoloader, which would look for a nonexistent plugins/pgnsuite/.
     if (!class_exists(\GlpiPlugin\Pgnsuite\ConfigTab::class, false)) {
         require_once __DIR__ . '/lib/pgnsuite/ConfigTab.php';
@@ -1325,7 +1325,7 @@ Temporarily change the password input's `value=""` to `value="' . htmlescape(Con
 
 ```bash
 git add src/Profile.php src/SuiteConfig.php front/config.php setup.php tests
-git commit -m "feat: rights tab and PGN Suite setup section
+git commit -m "feat: rights tab and ICT Tools setup section
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -1858,7 +1858,7 @@ namespace GlpiPlugin\Opmanager\OpManager;
 
 /**
  * Turns an OpManager device-list response into plain rows. Field names are
- * tolerant on purpose: the exact response of the PGN OpManager build is still
+ * tolerant on purpose: the exact response of the ORG OpManager build is still
  * to be verified (spec §13 item 1) - the runbook checks it against a real call.
  */
 final class DeviceParser
@@ -2618,7 +2618,7 @@ use Session;
  * Own top-level sidebar sector `opmanager` (riskregister v1.2.0 pattern, hub §4).
  * The sidebar renders only `content` entries that have a `page`; `title` is the
  * only way a new sector gets its label. No Setup entry: settings live in
- * Setup > General > PGN Suite.
+ * Setup > General > ICT Tools.
  */
 class Menu extends \CommonGLPI
 {
@@ -2738,7 +2738,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 10: Monitoring section on the PGN Suite asset tab
+### Task 10: Monitoring section on the ICT Tools asset tab
 
 **Files:**
 - Create: `src/AssetSections.php`, `tests/assetsections_test.php`
@@ -2861,7 +2861,7 @@ Expected: fatal on the missing `src/AssetSections.php`.
 namespace GlpiPlugin\Opmanager;
 
 /**
- * "Monitoring" section of the shared PGN Suite asset tab (hub §5, spec §9).
+ * "Monitoring" section of the shared ICT Tools asset tab (hub §5, spec §9).
  * A summary, never a browser: no pager (the tab loads by AJAX, hub §4), newest
  * MAX_ROWS rows, and an explicit "Showing N of M" line when truncated.
  */
@@ -2974,7 +2974,7 @@ final class AssetSections
 In `setup.php`'s `plugin_init_opmanager()`, append at the end:
 
 ```php
-    // Shared "PGN Suite" tab on asset forms (hub §5). The itemtype list is plain
+    // Shared "ICT Tools" tab on asset forms (hub §5). The itemtype list is plain
     // strings read from config + glpi_assets_assetdefinitions: custom asset classes
     // are not loaded yet here, so NEVER filter it with class_exists().
     if (!class_exists(\GlpiPlugin\Pgnsuite\AssetTab::class, false)) {
@@ -2998,7 +2998,7 @@ Temporarily change `array_slice($devices, 0, self::MAX_ROWS)` to `$devices`. Con
 
 ```bash
 git add src/AssetSections.php setup.php tests/assetsections_test.php
-git commit -m "feat: Monitoring section on the shared PGN Suite asset tab
+git commit -m "feat: Monitoring section on the shared ICT Tools asset tab
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -3103,7 +3103,7 @@ final class SelfCheck
 
 /**
  * opmanager runtime self-check. On the VM:
- *   sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php [filter]
+ *   sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php [filter]
  * Prints PASS/FAIL per check; exit 1 on any failure.
  */
 
@@ -3152,7 +3152,7 @@ Expected: two `No syntax errors detected`. (`ProfileRight::getProfileRights($pro
 
 Usage:
   python tools/release_check.py opmanagerv0.1.0.zip
-  python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+  python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 
 Reads bytes straight from the archive (never from an extraction, hub §5) and never
 uses a fallback that could print a passing value when a step cannot run.
@@ -3243,8 +3243,8 @@ if __name__ == "__main__":
   existing GLPI assets (Computer, NetworkEquipment, custom assets). Five match modes;
   manual pins always win; a name or IP owned by more than one asset goes to "Needs review".
 - OpManager sidebar sector with the device list and manual pin/unpin.
-- "Monitoring" section in the shared PGN Suite asset tab.
-- Setup in Setup > General > PGN Suite > OpManager; API key encrypted at rest.
+- "Monitoring" section in the shared ICT Tools asset tab.
+- Setup in Setup > General > ICT Tools > OpManager; API key encrypted at rest.
 - Alarms and tickets are NOT in this release (Plan 2).
 ```
 
@@ -3259,16 +3259,16 @@ status: active
 
 # opmanager v0.1.0 — VM verification runbook
 
-Run on VM-GLPI-01 (`/data/www/glpi`). Paste every command's output back to the session.
+Run on VM-SERVER-18 (`/var/www/glpi`). Paste every command's output back to the session.
 Tick a box only with the evidence named on it.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.1.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.1.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/bin/console plugin:activate opmanager
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] selfcheck prints `ALL PASS`. If `matching/itemtypes-loadable` fails, the configured
@@ -3278,8 +3278,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 
 ## 2. Setup
 
-- [ ] Setup > General > PGN Suite shows an **OpManager** sub-tab, and there is exactly one
-      "PGN Suite" tab.
+- [ ] Setup > General > ICT Tools shows an **OpManager** sub-tab, and there is exactly one
+      "ICT Tools" tab.
 - [ ] Enter URL + API key, save, reload: the key field is empty with "Stored" placeholder.
 - [ ] Tick Computer, Network devices, **Security**, **Storage**; save; reload - still ticked.
       Write down the two custom class names shown in the page source (`value="Glpi\CustomAsset\…Asset"`).
@@ -3287,8 +3287,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ## 3. First device sync
 
 ```bash
-sudo -u nginx php /data/www/glpi/front/cron.php DeviceSync
-sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
+sudo -u nginx php /var/www/glpi/front/cron.php DeviceSync
+sudo tail -n 20 /var/www/glpi/files/_log/opmanager.log
 ```
 
 - [ ] Automatic action log shows `fetched N, matched …` with N > 0.
@@ -3299,7 +3299,7 @@ sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
 
 ## 4. Matching and the Monitoring section
 
-- [ ] Open one matched Computer: a **PGN Suite** tab with a **Monitoring** sub-tab shows the
+- [ ] Open one matched Computer: a **ICT Tools** tab with a **Monitoring** sub-tab shows the
       device, its IP and "by name"/"by IP".
 - [ ] Open one matched **NetworkEquipment**: same.
 - [ ] Open one matched **Security** or **Storage** asset: same.
@@ -3332,7 +3332,7 @@ git commit -m "chore: selfcheck, release checker and v0.1.0 runbook
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 git tag 0.1.0
 git archive --format=zip --prefix=opmanager/ -o opmanagerv0.1.0.zip 0.1.0
-python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 ```
 
 Expected: every line `PASS`, and the final line reads `RELEASE OK`. Also `installed: N files` equals `entries: N`. If any line reads `FAIL`, fix the cause, delete the tag (`git tag -d 0.1.0`), and rebuild. Never ship a zip that failed this check.

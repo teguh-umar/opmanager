@@ -45,7 +45,7 @@ if (isset($_POST['update'])) {
     Html::back();
 }
 
-// Users who can open Setup > General get the PGN Suite tab instead (hub §5).
+// Users who can open Setup > General get the ICT Tools tab instead (hub §5).
 if (Session::haveRight('config', READ)) {
     Html::redirect(ConfigTab::getReturnUrl(SuiteConfig::SECTION));
 }

@@ -25,7 +25,7 @@ check('body links the device list', str_contains($body, htmlspecialchars($url, E
 check('body explains exclusions', str_contains($body, 'Exclude a device from these tickets on its OpManager device page (reason required).'));
 check('body shows the liveness evidence', str_contains($body, 'TCP 22 no answer'));
 
-// Opsi A (rc3): one NMS ticket, each section split by domain so DCOC and ITOC each see their part.
+// Opsi A (rc3): one NMS ticket, each section split by domain so ICT and ITOC each see their part.
 check('domain: Server is server', Report::domain('Server', '') === 'server');
 check('domain: Storage is server', Report::domain('Storage', '') === 'server');
 check('domain: Domain Controller (with space) is server', Report::domain('Domain Controller', '') === 'server');

@@ -9,14 +9,14 @@ status: active
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.6.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.6.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] Selfcheck prints `ALL PASS (18 passed, 0 failed)`.
 
-## 2. Setup (Setup > General > PGN Suite > OpManager)
+## 2. Setup (Setup > General > ICT Tools > OpManager)
 
 - [ ] The status strip shows five badges: API key, Device sync, Alarm sync, Webhook, To OpManager. Their colours match reality (green = fine).
 - [ ] The tabs Connection, Matching, Tickets, Alarm filter, Webhook and To OpManager all open. The existing values are still there.

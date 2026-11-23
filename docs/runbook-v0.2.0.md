@@ -23,14 +23,14 @@ Tick a box only with the evidence named on it. Paste outputs back to the session
 ## 2. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.2.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.2.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] `DeviceSync` still works after the header-auth change:
-      `sudo -u nginx php /data/www/glpi/front/cron.php DeviceSync` → "Last successful device sync" updates.
-- [ ] Setup > PGN Suite > OpManager > "Tickets from alarms": service user, template and default
+      `sudo -u nginx php /var/www/glpi/front/cron.php DeviceSync` → "Last successful device sync" updates.
+- [ ] Setup > ICT Tools > OpManager > "Tickets from alarms": service user, template and default
       entity set, **only Critical** ticked, and the **production IP ranges** ticked (e.g.
       "Prodcution IT", "Production OT"). Save; then selfcheck prints `ALL PASS`
       (including `tickets/service-user`, `tickets/production-ranges` and
@@ -41,8 +41,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ## 3. First alarm sync
 
 ```bash
-sudo -u nginx php /data/www/glpi/front/cron.php AlarmSync
-sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
+sudo -u nginx php /var/www/glpi/front/cron.php AlarmSync
+sudo tail -n 20 /var/www/glpi/files/_log/opmanager.log
 ```
 
 - [ ] Automatic action log shows `fetched N, created …`. N should be about the number of active
@@ -69,7 +69,7 @@ The Behaviors plugin requires a category before a ticket can be Solved/Closed. T
 one from GLPI's own rules, which run on every ticket the plugin creates
 (`Ticket::prepareInputForAdd` → `processRules(ONADD)`).
 
-- [ ] Setup > PGN Suite > OpManager: the ticket description contains the line
+- [ ] Setup > ICT Tools > OpManager: the ticket description contains the line
       `Category: {category}`. That is the default since v0.2.1; if the description was
       customised, add the line by hand.
 - [ ] Administration > Rules > **Business rules for tickets**: one rule per OpManager

@@ -9,13 +9,13 @@ status: active
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.3.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.3.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
 ```
 
-- [ ] Setup > PGN Suite > OpManager > "Webhook from OpManager": click **Generate new token**,
+- [ ] Setup > ICT Tools > OpManager > "Webhook from OpManager": click **Generate new token**,
       and copy the token from the yellow box under the Webhook fields (it is shown once).
-- [ ] `sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
+- [ ] `sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php` prints `ALL PASS`
       (including `webhook/stateless`, `webhook/token`, `webhook/lock`).
 
 ## 1b. Alarm filter

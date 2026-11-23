@@ -12,14 +12,14 @@ v0.4.0 includes everything in 0.3.0 (webhook, alarm filter) and 0.2.2 (curl clie
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.4.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.4.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] Selfcheck prints `ALL PASS`, including `outbound/table` and `outbound/cron`.
 - [ ] Setup > Automatic actions: `OutboxSend` exists in CLI mode and runs every minute.
-- [ ] Setup > PGN Suite > OpManager > Tickets from alarms: "Sent to OpManager" shows
+- [ ] Setup > ICT Tools > OpManager > Tickets from alarms: "Sent to OpManager" shows
       `Waiting: 0, given up: 0`.
 - [ ] An alarm page (OpManager > Alarms > any alarm) has a title like
       `CORE-SW-02 - 10000004729` (no longer "N/A") and an **OpManager entity** row.

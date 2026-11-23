@@ -3,7 +3,7 @@
 namespace GlpiPlugin\Opmanager;
 
 /**
- * "Monitoring" section of the shared PGN Suite asset tab (hub §5, spec §9).
+ * "Monitoring" section of the shared ICT Tools asset tab (hub §5, spec §9).
  * A summary, never a browser: no pager (the tab loads by AJAX, hub §4), newest
  * MAX_ROWS rows, and an explicit "Showing N of M" line when truncated.
  */

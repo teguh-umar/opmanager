@@ -12,7 +12,7 @@ use GlpiPlugin\Opmanager\OpManager\ClientException;
 $row = [
     'severity' => "<img src='/images/devices/status3.gif'>&nbsp;Attention",
     'numericSeverity' => 3, 'deviceType' => '-', 'severityString' => 'Attention', 'statusStr' => 'Attention',
-    'displayName' => 'VM-APP-DB01', 'ipAddress' => '10.20.14.139', 'eventType' => 'Threshold Down',
+    'displayName' => 'VM-SERVER-03', 'ipAddress' => '10.20.14.139', 'eventType' => 'Threshold Down',
     'message' => 'CPU Utilization is 85 %, threshold value for this monitor is 80 %',
     'deviceName' => '10.20.3.139.10000000001', 'statusNum' => 3, 'modTimeLong' => 1790739714008,
     'modTime' => '30 Sep 2026 10:41:54 AM ICT', 'alarmId' => '10000003244', 'category' => 'Server',
@@ -22,7 +22,7 @@ $rows = AlarmParser::parse(json_encode([$row, ['alarmId' => '', 'numericSeverity
 check('rows without alarmId or valid severity are skipped', count($rows) === 1);
 $a = $rows[0];
 check('keys mapped', $a['alarm_key'] === '10000003244' && $a['entity_key'] === '10000024830'
-    && $a['device_name'] === '10.20.3.139.10000000001' && $a['display_name'] === 'VM-APP-DB01'
+    && $a['device_name'] === '10.20.3.139.10000000001' && $a['display_name'] === 'VM-SERVER-03'
     && $a['ip_address'] === '10.20.14.139' && $a['alarm_code'] === 'THRESHOLD-DOWN_VMware-vmCPUUtilization');
 check('numeric severity used', $a['severity'] === 3 && $a['severity_label'] === 'Attention');
 check('HTML severity field never copied', !str_contains(json_encode($a), '<img'));

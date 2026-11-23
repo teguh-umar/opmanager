@@ -6,8 +6,8 @@ status: active
 
 # Plugin `opmanager` — Spesifikasi Desain v1
 
-Integrasi ManageEngine OpManager ↔ GLPI 11 (VM-GLPI-01, core 11.0.5) sebagai plugin ke-7
-PGN GLPI Suite. Hub koordinasi: `…/Documents/PGN GLPI Suite/_pgn-glpi-suite.md`.
+Integrasi ManageEngine OpManager ↔ GLPI 11 (VM-SERVER-18, core 11.0.5) sebagai plugin ke-7
+GLPI plugin suite. Hub koordinasi: `…/Documents/GLPI plugin suite/_pgn-glpi-suite.md`.
 
 Dokumen ini hasil sesi brainstorming 2026-09-23 s.d. 2026-09-29 dengan user. Semua
 keputusan di §2 berasal dari user; hal yang merupakan **usulan** (belum diputuskan
@@ -18,7 +18,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 **Masuk v1:**
 
 - Mencocokkan perangkat OpManager ke aset GLPI yang sudah ada (tanpa menulis ke aset).
-- Sub-tab **Monitoring** (status + alarm terbaru) di tab bersama **PGN Suite** pada
+- Sub-tab **Monitoring** (status + alarm terbaru) di tab bersama **ICT Tools** pada
   Computer, NetworkEquipment, Security, Storage.
 - Tiket GLPI dari alarm OpManager, dua arah: buat / gabung / buka kembali / Solved dari
   OpManager, dan notes + clear alarm ke OpManager dari aksi teknisi di GLPI.
@@ -45,7 +45,7 @@ eksplisit) ditandai *(usulan)* dan boleh dikoreksi saat review.
 | D2 | Sinkron = **hanya mencocokkan**, tidak pernah menulis ke aset GLPI | 2026-09-23 |
 | D3 | 1 ID alarm OpManager = maksimal 1 tiket | 2026-09-23 |
 | D4 | Dropdown mode pencocokan seperti integrasipaman + mode `manual` | 2026-09-23 |
-| D5 | Monitoring = sub-tab di tab bersama PGN Suite, bukan tab sendiri | 2026-09-24 |
+| D5 | Monitoring = sub-tab di tab bersama ICT Tools, bukan tab sendiri | 2026-09-24 |
 | D6 | Alarm clear → tiket **Solved**; ID alarm sama aktif lagi → **buka kembali + followup** | 2026-09-29 |
 | D7 | Plugin sebagai jembatan di dalam GLPI: webhook OpManager masuk, API OpManager keluar, cron pengaman. Webhook bawaan GLPI tidak dipakai | 2026-09-29 |
 | D8 | Teknisi Solve/Close di GLPI → notes + **clear** alarm di OpManager | 2026-09-29 |
@@ -95,8 +95,8 @@ OpManager ◀──API── Cron AlarmSync/DeviceSync ─┤
 | Hook tiket | `Hooks\TicketHooks` | Deteksi aksi teknisi → isi antrean (§8) |
 | Antrean keluar | `Outbound\Queue` | Kirim, coba ulang dengan jeda bertambah, tandai gagal |
 | Cron | `Cron` | `AlarmSync` (default 10 mnt), `DeviceSync` (default 60 mnt), `QueueRetry` (default 5 mnt). Semua **mode CLI** (lihat hub §4 soal run mode per task) |
-| Sub-tab Monitoring | `AssetSections` | Provider `sections()` untuk `AssetTab` PGN Suite (§9) |
-| Setup | `SuiteConfig` | Section di tab PGN Suite config (§10) |
+| Sub-tab Monitoring | `AssetSections` | Provider `sections()` untuk `AssetTab` ICT Tools (§9) |
+| Setup | `SuiteConfig` | Section di tab ICT Tools config (§10) |
 
 ## 4. Namespace & aturan suite yang wajib
 
@@ -263,7 +263,7 @@ lalu `failed` dan tampil di Setup. Endpoint OpManager (§13) dibungkus di `Clien
 
 ## 9. Tampilan
 
-**Sub-tab Monitoring** (key `monitoring`, order 60) di tab bersama PGN Suite untuk aset
+**Sub-tab Monitoring** (key `monitoring`, order 60) di tab bersama ICT Tools untuk aset
 yang punya pasangan perangkat OpManager, hanya untuk pemegang
 `plugin_opmanager_monitoring`:
 
@@ -277,7 +277,7 @@ yang punya pasangan perangkat OpManager, hanya untuk pemegang
 - **Devices** — daftar perangkat, filter `match_state`, pin/lepas manual.
 - **Alarms** — daftar alarm dengan filter dan paging server.
 
-## 10. Setup (section di tab PGN Suite config)
+## 10. Setup (section di tab ICT Tools config)
 
 | Kunci | Default |
 |---|---|
@@ -338,7 +338,7 @@ token tidak pernah ditampilkan ulang utuh.
 
 ## 13. Harus diverifikasi sebelum/saat implementasi
 
-1. **API OpManager di server PGN:** path dan parameter untuk daftar perangkat, daftar
+1. **API OpManager di server ORG:** path dan parameter untuk daftar perangkat, daftar
    alarm aktif, tambah notes, dan clear alarm (dugaan: `/api/json/device/listDevices`,
    `/api/json/alarm/listAlarms`, `/api/json/alarm/addNotes`, `/api/json/alarm/clearAlarm`
    dengan `apiKey` + `entity`). Path `/api/v2/alarms/...` di `review_integrasi.md` belum
@@ -365,7 +365,7 @@ token tidak pernah ditampilkan ulang utuh.
   `numericSeverity`/`severityString` (D19), `statusStr`/`statusNum`, `eventType`,
   `message`, `modTime`/`modTimeLong` (epoch ms), `who` (status acknowledge).
 - **`deviceName` pada alarm tidak selalu ada di daftar perangkat** (contoh VM di host VMware:
-  `10.20.3.139.10000000001`, `displayName` VM-APP-DB01, `ipAddress` 10.20.14.139).
+  `10.20.3.139.10000000001`, `displayName` VM-SERVER-03, `ipAddress` 10.20.14.139).
   Tautan alarm ke aset: `deviceName` → `devices.device_key`; kalau tidak ada, pakai
   `displayName`/`ipAddress` dengan aturan pencocokan §5.
 - **Dokumentasi resmi OpManager** (manageengine.com, 2026-09-30):

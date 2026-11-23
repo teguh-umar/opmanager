@@ -6,16 +6,16 @@ status: active
 
 # opmanager v0.1.0 — VM verification runbook
 
-Run on VM-GLPI-01 (`/data/www/glpi`). Paste every command's output back to the session.
+Run on VM-SERVER-18 (`/var/www/glpi`). Paste every command's output back to the session.
 Tick a box only with the evidence named on it.
 
 ## 1. Install
 
 ```bash
-cd /data/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.1.0.zip && sudo chown -R nginx: opmanager
-sudo -u nginx php /data/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
-sudo -u nginx php /data/www/glpi/bin/console plugin:activate opmanager
-sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
+cd /var/www/glpi/plugins && sudo rm -rf opmanager && sudo unzip -q /tmp/opmanagerv0.1.0.zip && sudo chown -R nginx: opmanager
+sudo -u nginx php /var/www/glpi/bin/console plugin:install opmanager --username=<admin> --force
+sudo -u nginx php /var/www/glpi/bin/console plugin:activate opmanager
+sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php
 ```
 
 - [ ] selfcheck prints `ALL PASS`. If `matching/itemtypes-loadable` fails, the configured
@@ -25,8 +25,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 
 ## 2. Setup
 
-- [ ] Setup > General > PGN Suite shows an **OpManager** sub-tab, and there is exactly one
-      "PGN Suite" tab.
+- [ ] Setup > General > ICT Tools shows an **OpManager** sub-tab, and there is exactly one
+      "ICT Tools" tab.
 - [ ] Enter URL + API key, save, reload: the key field is empty with "Stored" placeholder.
 - [ ] Tick Computer, Network devices, **Security**, **Storage**; save; reload - still ticked.
       Write down the two custom class names shown in the page source (`value="Glpi\CustomAsset\…Asset"`).
@@ -34,8 +34,8 @@ sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php
 ## 3. First device sync
 
 ```bash
-sudo -u nginx php /data/www/glpi/front/cron.php DeviceSync
-sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
+sudo -u nginx php /var/www/glpi/front/cron.php DeviceSync
+sudo tail -n 20 /var/www/glpi/files/_log/opmanager.log
 ```
 
 - [ ] Automatic action log shows `fetched N, matched …` with N > 0.
@@ -46,7 +46,7 @@ sudo tail -n 20 /data/www/glpi/files/_log/opmanager.log
 
 ## 4. Matching and the Monitoring section
 
-- [ ] Open one matched Computer: a **PGN Suite** tab with a **Monitoring** sub-tab shows the
+- [ ] Open one matched Computer: a **ICT Tools** tab with a **Monitoring** sub-tab shows the
       device, its IP and "by name"/"by IP".
 - [ ] Open one matched **NetworkEquipment**: same.
 - [ ] Open one matched **Security** or **Storage** asset: same.

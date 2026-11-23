@@ -2,7 +2,7 @@
 
 /**
  * opmanager runtime self-check. On the VM:
- *   sudo -u nginx php /data/www/glpi/plugins/opmanager/tools/selfcheck.php [filter]
+ *   sudo -u nginx php /var/www/glpi/plugins/opmanager/tools/selfcheck.php [filter]
  * Prints PASS/FAIL per check; exit 1 on any failure.
  */
 

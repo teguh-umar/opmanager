@@ -2,7 +2,7 @@
 
 Usage:
   python tools/release_check.py opmanagerv0.1.0.zip
-  python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/teguh.umar/Downloads/glpi/plugins
+  python tools/release_check.py opmanagerv0.1.0.zip --install C:/Users/<user>/Downloads/glpi/plugins
 
 Reads bytes straight from the archive (never from an extraction, hub §5) and never
 uses a fallback that could print a passing value when a step cannot run.

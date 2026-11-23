@@ -1,7 +1,7 @@
 <?php
 
 /**
- * OpManager - ManageEngine OpManager <-> GLPI 11 integration (PGN GLPI Suite plugin #7)
+ * OpManager - ManageEngine OpManager <-> GLPI 11 integration (GLPI plugin suite plugin #7)
  *
  * @author  ICT
  * @license GPL-3.0-or-later
@@ -79,7 +79,7 @@ function plugin_init_opmanager()
     \GlpiPlugin\Pgnsuite\Menu::register('opmanager');
     $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\Menu::HOOK]['opmanager'] = \GlpiPlugin\Opmanager\Menu::class . '::entry';
 
-    // Shared "PGN Suite" tab on Setup > General (hub §5). class_exists(..., false)
+    // Shared "ICT Tools" tab on Setup > General (hub §5). class_exists(..., false)
     // skips the autoloader, which would look for a nonexistent plugins/pgnsuite/.
     if (!class_exists(\GlpiPlugin\Pgnsuite\ConfigTab::class, false)) {
         require_once __DIR__ . '/lib/pgnsuite/ConfigTab.php';
@@ -88,7 +88,7 @@ function plugin_init_opmanager()
     $PLUGIN_HOOKS[\GlpiPlugin\Pgnsuite\ConfigTab::HOOK]['opmanager'] =
         \GlpiPlugin\Opmanager\SuiteConfig::class . '::section';
 
-    // Shared "PGN Suite" tab on asset forms (hub §5). The itemtype list is plain
+    // Shared "ICT Tools" tab on asset forms (hub §5). The itemtype list is plain
     // strings read from config + glpi_assets_assetdefinitions: custom asset classes
     // are not loaded yet here, so NEVER filter it with class_exists().
     if (!class_exists(\GlpiPlugin\Pgnsuite\AssetTab::class, false)) {

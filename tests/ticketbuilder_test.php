@@ -20,7 +20,7 @@ check('network step can be switched off', EntityResolver::resolve(null, '10.20.1
 check('bad IP → default', EntityResolver::resolve(null, 'not-an-ip', $nets, true, 1) === 1);
 
 $alarm = [
-    'alarm_key' => '10000003244', 'entity_key' => 'E', 'device_name' => '10.20.3.139.10000000001', 'display_name' => 'VM-APP-DB01',
+    'alarm_key' => '10000003244', 'entity_key' => 'E', 'device_name' => '10.20.3.139.10000000001', 'display_name' => 'VM-SERVER-03',
     'ip_address' => '10.20.14.139', 'category' => 'Server', 'alarm_code' => 'THRESHOLD-DOWN_VMware-vmCPUUtilization',
     'event_type' => 'Threshold Down', 'severity' => 1, 'severity_label' => 'Critical',
     'message' => 'CPU <b>85</b> %', 'mod_time' => '2026-09-30 10:41:54',
@@ -29,8 +29,8 @@ $cfg = ['title_pattern' => '[OPM-{alarm_key}] {severity}: {message} - {device}',
 $asset = ['itemtype' => 'Computer', 'items_id' => 1529];
 
 $in = TicketBuilder::build($alarm, $asset, 7, [], 3, $cfg);
-check('title from pattern', $in['name'] === '[OPM-10000003244] Critical: CPU <b>85</b> % - VM-APP-DB01');
-check('content escaped and line breaks kept', $in['content'] === "Device: VM-APP-DB01<br />\nCPU &lt;b&gt;85&lt;/b&gt; %");
+check('title from pattern', $in['name'] === '[OPM-10000003244] Critical: CPU <b>85</b> % - VM-SERVER-03');
+check('content escaped and line breaks kept', $in['content'] === "Device: VM-SERVER-03<br />\nCPU &lt;b&gt;85&lt;/b&gt; %");
 check('entity set', $in['entities_id'] === 7);
 check('incident by default', $in['type'] === TicketBuilder::TYPE_INCIDENT);
 check('urgency from severity when template has none', $in['urgency'] === 5);
